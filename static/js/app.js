@@ -504,12 +504,10 @@ function initIntroPage() {
         }, 1000);
     };
 
-    // Play narration then auto-transition
+    // Play narration then auto-transition when finished
     setTimeout(() => {
         if (!narratorActive) {
-            playIntroNarration();
-            // Auto-transition after narration (approx 8 seconds)
-            setTimeout(autoTransition, 8000);
+            playIntroNarration(autoTransition);
         }
     }, 1000);
 
@@ -661,17 +659,22 @@ function transitionToLogin() {
     }
 }
 
-function playIntroNarration() {
-    if (narratorActive || !speechSynthesis) return;
+function playIntroNarration(onComplete) {
+    if (narratorActive || !speechSynthesis) { if (onComplete) onComplete(); return; }
     narratorActive = true;
     const lines = document.querySelectorAll('.k1-story-line');
-    if (!lines.length) { narratorActive = false; return; }
+    if (!lines.length) { narratorActive = false; if (onComplete) onComplete(); return; }
     lines.forEach(l => { l.style.opacity = '0'; l.style.animation = 'none'; });
     const voices = speechSynthesis.getVoices();
     const voice = voices.find(v => v.name.includes('David') || v.name.includes('Daniel')) || voices[0];
     let idx = 0;
     const speakNext = () => {
-        if (idx >= lines.length || !narratorActive) { narratorActive = false; const btn = $('k1EnterBtn'); if (btn) btn.classList.add('k1-blink-active'); return; }
+        if (idx >= lines.length || !narratorActive) {
+            narratorActive = false;
+            // Narration finished - call callback
+            if (onComplete) setTimeout(onComplete, 500);
+            return;
+        }
         const line = lines[idx]; line.style.opacity = '1'; line.style.transform = 'translateY(0)'; line.style.transition = 'all 0.6s ease';
         const utt = new SpeechSynthesisUtterance(line.textContent.trim());
         utt.rate = 0.85; utt.pitch = 0.9; utt.volume = 1; if (voice) utt.voice = voice;
