@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KELION AI - Admin Panel</title>
+    <style>
+        :root {
+            --bg: #0a1628;
+            --card-bg: rgba(20, 40, 70, 0.9);
+            --cyan: #00f3ff;
+            --text: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2d4a 50%, #0a1628 100%);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .admin-container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .admin-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--cyan);
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        input[type="password"],
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--cyan);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .toggle-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.5);
+            transition: color 0.3s;
+        }
+
+        .toggle-label.active {
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
+        .switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            transition: 0.3s;
+            border-radius: 30px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background: var(--cyan);
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background: rgba(0, 243, 255, 0.3);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(30px);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #00f3ff 0%, #00b4d8 100%);
+            border: none;
+            border-radius: 8px;
+            color: #0a1628;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 243, 255, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .result.success {
+            border-left: 3px solid #00ff88;
+        }
+
+        .result.error {
+            border-left: 3px solid #ff4444;
+        }
+
+        .login-section,
+        .upgrade-section {
+            display: none;
+        }
+
+        .login-section.active,
+        .upgrade-section.active {
+            display: block;
+        }
+
+        .info-text {
+            text-align: center;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 10px;
+        }
+
+        .tab-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: var(--cyan);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .visitor-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-container">
+        <div class="admin-card">
+            <h1>🔐 KELION Admin</h1>
+
+            <div id="loginSection" class="login-section active">
+                <div class="form-group">
+                    <label>Admin Password</label>
+                    <input type="password" id="adminPassword" placeholder="Enter admin password">
+                </div>
+                <button class="btn" id="loginBtn">LOGIN</button>
+                <div id="loginResult" class="result"></div>
+            </div>
+
+            <div id="upgradeSection" class="upgrade-section">
+                <div class="toggle-container">
+                    <span class="toggle-label active" id="labelSingle">1 USER</span>
+                    <label class="switch">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label" id="labelMulti">MULTI</span>
+                </div>
+
+                <div id="singleInput" class="form-group">
+                    <label>Demo Username</label>
+                    <input type="text" id="singleUser" placeholder="Enter demo username">
+                </div>
+
+                <div id="multiInput" class="form-group" style="display:none;">
+                    <label>Demo Usernames (one per line)</label>
+                    <textarea id="multiUsers" placeholder="user1&#10;user2&#10;user3"></textarea>
+                </div>
+
+                <button class="btn" id="upgradeBtn">UPGRADE TO USER</button>
+                <p class="info-text">Upgrades demo accounts to full user accounts</p>
+                <div id="upgradeResult" class="result"></div>
+
+                <div class="tab-btns">
+                    <button class="tab-btn" id="showTrafficBtn">📊 TRAFFIC</button>
+                </div>
+
+                <div id="trafficSection" style="display:none; margin-top:20px;">
+                    <h3 style="color:var(--cyan); margin-bottom:15px;">📊 Visitors (last 50)</h3>
+                    <div id="visitorList" style="max-height:300px; overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_PASS = 'Andrada_1968!';
+        let isLoggedIn = false;
+
+        const $ = id => document.getElementById(id);
+
+        $('loginBtn').onclick = () => {
+            if ($('adminPassword').value === ADMIN_PASS) {
+                $('loginSection').classList.remove('active');
+                $('upgradeSection').classList.add('active');
+            } else {
+                $('loginResult').textContent = '❌ Wrong password';
+                $('loginResult').className = 'result error';
+                $('loginResult').style.display = 'block';
+            }
+        };
+
+        $('adminPassword').onkeypress = e => { if (e.key === 'Enter') $('loginBtn').click(); };
+
+        $('modeToggle').onchange = () => {
+            const isMulti = $('modeToggle').checked;
+            $('labelSingle').classList.toggle('active', !isMulti);
+            $('labelMulti').classList.toggle('active', isMulti);
+            $('singleInput').style.display = isMulti ? 'none' : 'block';
+            $('multiInput').style.display = isMulti ? 'block' : 'none';
+        };
+
+        $('upgradeBtn').onclick = async () => {
+            const isMulti = $('modeToggle').checked;
+            let userIds = isMulti
+                ? $('multiUsers').value.split('\n').map(u => u.trim()).filter(u => u)
+                : [$('singleUser').value.trim()].filter(u => u);
+
+            if (!userIds.length) {
+                $('upgradeResult').textContent = '⚠️ Enter at least one username';
+                $('upgradeResult').className = 'result error';
+                $('upgradeResult').style.display = 'block';
+                return;
+            }
+
+            $('upgradeBtn').disabled = true;
+            $('upgradeBtn').textContent = 'UPGRADING...';
+
+            try {
+                const res = await fetch('/admin/upgrade-demo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_PASS },
+                    body: JSON.stringify({ userIds })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    $('upgradeResult').innerHTML = `✅ Upgraded: ${data.upgradedCount}` +
+                        (data.failedCount > 0 ? `<br>❌ Failed: ${data.failedCount}` : '');
+                    $('upgradeResult').className = 'result success';
+                    $('singleUser').value = '';
+                    $('multiUsers').value = '';
+                } else {
+                    $('upgradeResult').textContent = `❌ ${data.error}`;
+                    $('upgradeResult').className = 'result error';
+                }
+            } catch (e) {
+                $('upgradeResult').textContent = '❌ Connection error';
+                $('upgradeResult').className = 'result error';
+            }
+
+            $('upgradeResult').style.display = 'block';
+            $('upgradeBtn').disabled = false;
+            $('upgradeBtn').textContent = 'UPGRADE TO USER';
+        };
+
+        $('showTrafficBtn').onclick = async () => {
+            const visible = $('trafficSection').style.display !== 'none';
+            $('trafficSection').style.display = visible ? 'none' : 'block';
+
+            if (!visible) {
+                $('visitorList').innerHTML = '<p style="color:rgba(255,255,255,0.5)">Loading...</p>';
+                try {
+                    const res = await fetch('/admin/visitors?limit=50', { headers: { 'X-Admin-Token': ADMIN_PASS } });
+                    const data = await res.json();
+
+                    if (data.visitors?.length) {
+                        $('visitorList').innerHTML = data.visitors.map(v => `
+              <div class="visitor-item">
+                <div style="display:flex;justify-content:space-between;">
+                  <span style="color:var(--cyan);">🌐 ${v.ip}</span>
+                  <span style="color:rgba(255,255,255,0.5);">${new Date(v.visited_at).toLocaleString()}</span>
+                </div>
+                <div style="color:rgba(255,255,255,0.6);margin-top:5px;word-break:break-all;font-size:0.7rem;">${v.user_agent.substring(0, 80)}...</div>
+              </div>
+            `).join('');
+                    } else {
+                        $('visitorList').innerHTML = '<p style="color:rgba(255,255,255,0.5)">No visitors yet</p>';
+                    }
+                } catch (e) {
+                    $('visitorList').innerHTML = '<p style="color:#ff4444;">Error loading</p>';
+                }
+            }
+        };
+    </script>
+</body>
+
+</html>

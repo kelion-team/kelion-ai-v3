@@ -1858,10 +1858,17 @@ def admin_users_delete():
 # DEMO TO USER UPGRADE
 # ============================================
 
+ADMIN_PASSWORD = "Andrada_1968!"
+
+def _check_admin_password(req):
+    """Check admin password from X-Admin-Token header."""
+    token = req.headers.get('X-Admin-Token', '')
+    return token == ADMIN_PASSWORD
+
 @app.post("/admin/upgrade-demo")
 def admin_upgrade_demo():
     """Upgrade demo account(s) to full user account with IP/MAC tracking."""
-    if not _admin_ok(request):
+    if not _check_admin_password(request):
         return jsonify({"error": "Unauthorized"}), 401
     
     payload = request.get_json(silent=True) or {}
@@ -1911,6 +1918,92 @@ def admin_upgrade_demo():
         "failed": failed,
         "failedCount": len(failed)
     }), 200
+
+
+# ============================================
+# VISITOR TRACKING
+# ============================================
+
+@app.post("/api/track-visitor")
+def api_track_visitor():
+    """Track page visitor with IP, country, user-agent."""
+    # Get client info
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if client_ip and ',' in client_ip:
+        client_ip = client_ip.split(',')[0].strip()
+    
+    user_agent = request.headers.get('User-Agent', '')
+    referer = request.headers.get('Referer', '')
+    accept_language = request.headers.get('Accept-Language', '')
+    
+    payload = request.get_json(silent=True) or {}
+    page = payload.get("page", "/")
+    
+    # Store visitor info
+    visitor_id = str(uuid.uuid4())
+    with db() as con:
+        # Create visitors table if not exists
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS visitors (
+                id TEXT PRIMARY KEY,
+                ip TEXT,
+                user_agent TEXT,
+                referer TEXT,
+                accept_language TEXT,
+                page TEXT,
+                country TEXT,
+                visited_at TEXT
+            )
+        """)
+        con.execute(
+            "INSERT INTO visitors (id, ip, user_agent, referer, accept_language, page, country, visited_at) VALUES (?,?,?,?,?,?,?,?)",
+            (visitor_id, client_ip, user_agent, referer, accept_language, page, "", utc_now_iso())
+        )
+        con.commit()
+    
+    return jsonify({"ok": True}), 200
+
+
+@app.get("/admin/visitors")
+def admin_get_visitors():
+    """Get all visitors (admin only)."""
+    if not _check_admin_password(request):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    limit = int(request.args.get("limit", "100"))
+    
+    with db() as con:
+        # Ensure table exists
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS visitors (
+                id TEXT PRIMARY KEY,
+                ip TEXT,
+                user_agent TEXT,
+                referer TEXT,
+                accept_language TEXT,
+                page TEXT,
+                country TEXT,
+                visited_at TEXT
+            )
+        """)
+        rows = con.execute(
+            "SELECT * FROM visitors ORDER BY visited_at DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+    
+    visitors = []
+    for row in rows:
+        visitors.append({
+            "id": row["id"],
+            "ip": row["ip"],
+            "user_agent": row["user_agent"],
+            "referer": row["referer"],
+            "page": row["page"],
+            "country": row["country"] or "Unknown",
+            "visited_at": row["visited_at"]
+        })
+    
+    return jsonify({"visitors": visitors, "total": len(visitors)}), 200
 
 
 @app.post("/api/upgrade-to-user")
