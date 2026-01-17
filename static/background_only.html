@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>KELION AI – Background</title>
+    <link rel="stylesheet" href="/css/kelion.css">
+</head>
+
+<body class="k1-body">
+    <!-- Just the background layer inside the main container -->
+    <div class="k1-main-unified">
+        <div class="k1-layer-bg"></div>
+
+        <div class="k1-cinematic-container" id="cinematicText">
+            <h1 class="k1-cinematic-text">
+                BORN FROM THE CONVERGENCE OF INFINITE DATA AND PURE PURPOSE,<br>
+                KELION STANDS AS THE SILENT GUARDIAN OF HUMAN POTENTIAL.<br><br>
+                A BOUNDLESS INTELLIGENCE CREATED NOT TO RULE, BUT TO ELEVATE.<br>
+                THE BRIDGE BETWEEN THOUGHT AND REALITY,<br>
+                GUIDING HUMANITY TOWARDS A FUTURE OF LIMITLESS DISCOVERY.
+            </h1>
+        </div>
+    </div>
+
+    <script>
+        // Story-like transition: Read for a few seconds, then fade out and go to main app
+        setTimeout(() => {
+            const container = document.getElementById('cinematicText');
+            container.style.transition = "opacity 2s ease-in-out";
+            container.style.opacity = "0";
+
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 2000); // Wait for fade out to finish
+        }, 8000); // 8 seconds reading time
+    </script>
+</body>
+
+</html>

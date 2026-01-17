@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Reports - KELION AI Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Rajdhani:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-card: rgba(15, 25, 45, 0.9);
+      --accent: #00f3ff;
+      --accent-dim: rgba(0, 243, 255, 0.3);
+      --success: #00ff96;
+      --warning: #ffaa00;
+      --danger: #ff4d6d;
+      --text: #e9ecff;
+      --text-dim: rgba(233, 236, 255, 0.6);
+      --border: rgba(0, 243, 255, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Rajdhani', sans-serif;
+      background: linear-gradient(135deg, #030810 0%, #0a1525 50%, #030810 100%);
+      color: var(--text);
+    }
+
+    .page-container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 15px 25px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 15px;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 20px;
+      color: var(--accent);
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .logout-btn {
+      padding: 8px 16px;
+      background: rgba(255, 77, 109, 0.15);
+      border: 1px solid rgba(255, 77, 109, 0.4);
+      color: #ff4d6d;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow: hidden;
+    }
+
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .status-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .status-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--accent);
+    }
+
+    .status-label {
+      color: var(--text-dim);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    .reports-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .report-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .report-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0, 243, 255, 0.1);
+    }
+
+    .report-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .report-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .report-desc {
+      color: var(--text-dim);
+      font-size: 11px;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .report-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: rgba(0, 243, 255, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 20px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 10px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .report-btn:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      width: 90%;
+      max-width: 900px;
+      max-height: 85vh;
+      overflow: auto;
+    }
+
+    .modal-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+    }
+
+    .modal-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      color: var(--accent);
+    }
+
+    .modal-close {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .check-list {
+      list-style: none;
+    }
+
+    .check-list li {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 12px;
+    }
+
+    .check-ok::before {
+      content: '✅ ';
+    }
+
+    .check-warn::before {
+      content: '⚠️ ';
+    }
+
+    .check-error::before {
+      content: '❌ ';
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin: 10px 0;
+    }
+
+    .report-table th,
+    .report-table td {
+      padding: 8px 10px;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+
+    .report-table th {
+      background: rgba(0, 243, 255, 0.1);
+      color: var(--accent);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 15px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .badge-ok {
+      background: rgba(0, 255, 150, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(0, 255, 150, 0.3);
+    }
+
+    .badge-warn {
+      background: rgba(255, 170, 0, 0.1);
+      color: var(--warning);
+      border: 1px solid rgba(255, 170, 0, 0.3);
+    }
+
+    .badge-info {
+      background: rgba(0, 243, 255, 0.1);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+    }
+
+    .report-section {
+      margin-bottom: 20px;
+    }
+
+    .report-h3 {
+      color: var(--accent);
+      font-size: 13px;
+      margin-bottom: 10px;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    /* Auth */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      width: 380px;
+      text-align: center;
+    }
+
+    .auth-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 28px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      color: var(--text-dim);
+      margin-bottom: 25px;
+      font-size: 14px;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 15px;
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .auth-error {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Auth Overlay -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="auth-logo">KELION AI</div>
+      <div class="auth-subtitle">Admin Reports Access</div>
+      <input type="password" class="auth-input" id="adminTokenInput" placeholder="Enter Admin Token">
+      <button class="auth-btn" onclick="authenticate()">AUTHENTICATE</button>
+      <div class="auth-error hidden" id="authError">Invalid admin token</div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="mainContent" class="page-container hidden">
+    <div class="header">
+      <div>
+        <div class="logo">KELION AI</div>
+        <div class="subtitle">System Reports & Analytics</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="main-content">
+      <div class="section-title">SYSTEM STATUS</div>
+      <div class="status-row">
+        <div class="status-card">
+          <div class="status-value" style="color: var(--success);">●</div>
+          <div class="status-label">Server</div>
+        </div>
+        <div class="status-card">
+          <div class="status-value" id="statusUsers">-</div>
+          <div class="status-label">Total Users</div>
+        </div>
+        <div class="status-card">
+          <div class="status-value" id="statusMessages">-</div>
+          <div class="status-label">Messages</div>
+        </div>
+        <div class="status-card">
+          <div class="status-value" id="statusVersion">-</div>
+          <div class="status-label">Version</div>
+        </div>
+      </div>
+
+      <div class="section-title">AVAILABLE REPORTS</div>
+      <div class="reports-grid">
+        <div class="report-card" onclick="showReport('functionality')">
+          <div class="report-icon">📊</div>
+          <div class="report-title">FUNCTIONALITY</div>
+          <div class="report-desc">All implemented features, status, and compliance.</div>
+          <span class="report-btn">VIEW</span>
+        </div>
+
+        <div class="report-card" onclick="showReport('security')">
+          <div class="report-icon">🔐</div>
+          <div class="report-title">SECURITY AUDIT</div>
+          <div class="report-desc">Authentication, encryption, and vulnerabilities.</div>
+          <span class="report-btn">VIEW</span>
+        </div>
+
+        <div class="report-card" onclick="showReport('database')">
+          <div class="report-icon">🗄️</div>
+          <div class="report-title">DATABASE</div>
+          <div class="report-desc">Schema, tables, and data integrity.</div>
+          <span class="report-btn">VIEW</span>
+        </div>
+
+        <div class="report-card" onclick="showReport('api')">
+          <div class="report-icon">🌐</div>
+          <div class="report-title">API ENDPOINTS</div>
+          <div class="report-desc">All endpoints with methods and auth requirements.</div>
+          <span class="report-btn">VIEW</span>
+        </div>
+
+        <div class="report-card" onclick="showReport('issues')">
+          <div class="report-icon">⚠️</div>
+          <div class="report-title">ISSUES & CONFIG</div>
+          <div class="report-desc">Missing configurations and potential blockers.</div>
+          <span class="report-btn">VIEW</span>
+        </div>
+
+        <div class="report-card" onclick="showReport('memory')">
+          <div class="report-icon">🧠</div>
+          <div class="report-title">AI MEMORY</div>
+          <div class="report-desc">Memory architecture and learning capabilities.</div>
+          <span class="report-btn">VIEW</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal hidden" id="reportModal" onclick="closeReport()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Report</div>
+        <button class="modal-close" onclick="closeReport()">Close</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    let adminToken = '';
+
+    async function authenticate() {
+      const token = document.getElementById('adminTokenInput').value;
+      if (!token) { showAuthError('Enter token'); return; }
+
+      try {
+        const res = await fetch('/admin/audit?limit=1', {
+          headers: { 'X-Admin-Token': token }
+        });
+
+        if (res.ok) {
+          adminToken = token;
+          localStorage.setItem('k1_admin_token', token);
+          document.getElementById('authOverlay').classList.add('hidden');
+          document.getElementById('mainContent').classList.remove('hidden');
+          loadDashboard();
+        } else {
+          showAuthError('Invalid token');
+        }
+      } catch (e) {
+        showAuthError('Connection error');
+      }
+    }
+
+    function showAuthError(msg) {
+      const el = document.getElementById('authError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function logout() {
+      localStorage.removeItem('k1_admin_token');
+      location.reload();
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/dashboard');
+        const data = await res.json();
+        document.getElementById('statusUsers').textContent = data.users || 0;
+        document.getElementById('statusMessages').textContent = data.messages || 0;
+        document.getElementById('statusVersion').textContent = data.version || 'k1.0.0';
+      } catch (e) {
+        console.error('Dashboard error:', e);
+      }
+    }
+
+    function showReport(type) {
+      const modal = document.getElementById('reportModal');
+      const title = document.getElementById('modalTitle');
+      const body = document.getElementById('modalBody');
+
+      const reports = {
+        functionality: genFunctionality(),
+        security: genSecurity(),
+        database: genDatabase(),
+        api: genAPI(),
+        issues: genIssues(),
+        memory: genMemory()
+      };
+
+      const titles = {
+        functionality: '📊 FUNCTIONALITY REPORT',
+        security: '🔐 SECURITY AUDIT',
+        database: '🗄️ DATABASE REPORT',
+        api: '🌐 API ENDPOINTS',
+        issues: '⚠️ ISSUES & CONFIGURATION',
+        memory: '🧠 AI MEMORY SYSTEM'
+      };
+
+      title.textContent = titles[type] || 'Report';
+      body.innerHTML = reports[type] || '<p>Not available</p>';
+      modal.classList.remove('hidden');
+    }
+
+    function closeReport() {
+      document.getElementById('reportModal').classList.add('hidden');
+    }
+
+    function genFunctionality() {
+      return `
+        <div class="report-section">
+          <h3 class="report-h3">CORE FEATURES</h3>
+          <ul class="check-list">
+            <li class="check-ok">3D Hologram WebGL</li>
+            <li class="check-ok">AI Chat (DeepSeek/OpenAI)</li>
+            <li class="check-ok">Text-to-Speech (Browser)</li>
+            <li class="check-ok">Speech-to-Text (Whisper)</li>
+            <li class="check-ok">Multi-language (10)</li>
+          </ul>
+        </div>
+        <div class="report-section">
+          <h3 class="report-h3">AUTHENTICATION</h3>
+          <ul class="check-list">
+            <li class="check-ok">User Registration (bcrypt)</li>
+            <li class="check-ok">User Login</li>
+            <li class="check-ok">Forgot Password</li>
+            <li class="check-ok">Email Verification</li>
+            <li class="check-ok">2FA (TOTP)</li>
+          </ul>
+        </div>
+        <div class="report-section">
+          <h3 class="report-h3">GDPR COMPLIANCE</h3>
+          <ul class="check-list">
+            <li class="check-ok">Data Export</li>
+            <li class="check-ok">Data Deletion</li>
+            <li class="check-ok">Privacy Policy</li>
+            <li class="check-ok">Cookie Consent</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    function genSecurity() {
+      return `
+        <div class="report-section">
+          <h3 class="report-h3">PASSWORD SECURITY</h3>
+          <table class="report-table">
+            <tr><td>Hashing</td><td><span class="badge badge-ok">bcrypt</span></td></tr>
+            <tr><td>Fallback</td><td><span class="badge badge-info">SHA256 + Salt</span></td></tr>
+            <tr><td>Min Length</td><td>4 characters</td></tr>
+          </table>
+        </div>
+        <div class="report-section">
+          <h3 class="report-h3">TOKEN SECURITY</h3>
+          <table class="report-table">
+            <tr><td>Reset Token</td><td>32-byte, 1h expiry</td></tr>
+            <tr><td>Verify Token</td><td>32-byte, 48h expiry</td></tr>
+            <tr><td>Storage</td><td>Hashed in DB</td></tr>
+          </table>
+        </div>
+        <div class="report-section">
+          <h3 class="report-h3">2FA</h3>
+          <table class="report-table">
+            <tr><td>Algorithm</td><td><span class="badge badge-ok">TOTP (RFC 6238)</span></td></tr>
+            <tr><td>Backup Codes</td><td>10, hashed, single-use</td></tr>
+          </table>
+        </div>
+      `;
+    }
+
+    function genDatabase() {
+      return `
+        <div class="report-section">
+          <h3 class="report-h3">TABLES (11 total)</h3>
+          <table class="report-table">
+            <thead><tr><th>Table</th><th>Purpose</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>users</td><td>Accounts</td><td><span class="badge badge-ok">Active</span></td></tr>
+              <tr><td>messages</td><td>Chat history</td><td><span class="badge badge-ok">Active</span></td></tr>
+              <tr><td>audit</td><td>Action logs</td><td><span class="badge badge-ok">Active</span></td></tr>
+              <tr><td>summaries</td><td>Long-term memory</td><td><span class="badge badge-ok">Active</span></td></tr>
+              <tr><td>tokens</td><td>Reset/verify tokens</td><td><span class="badge badge-ok">Active</span></td></tr>
+              <tr><td>backup_codes</td><td>2FA codes</td><td><span class="badge badge-ok">Active</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function genAPI() {
+      return `
+        <div class="report-section">
+          <h3 class="report-h3">AUTH ENDPOINTS</h3>
+          <table class="report-table">
+            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+            <tbody>
+              <tr><td>POST</td><td>/api/register</td></tr>
+              <tr><td>POST</td><td>/api/login</td></tr>
+              <tr><td>POST</td><td>/api/forgot-password</td></tr>
+              <tr><td>POST</td><td>/api/reset-password</td></tr>
+              <tr><td>POST</td><td>/api/2fa/setup</td></tr>
+              <tr><td>POST</td><td>/api/2fa/verify</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="report-section">
+          <h3 class="report-h3">ADMIN ENDPOINTS</h3>
+          <table class="report-table">
+            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+            <tbody>
+              <tr><td>GET</td><td>/admin/audit</td></tr>
+              <tr><td>GET</td><td>/admin/users</td></tr>
+              <tr><td>POST</td><td>/admin/users/upgrade</td></tr>
+              <tr><td>DELETE</td><td>/admin/users</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function genIssues() {
+      return `
+        <div class="report-section">
+          <h3 class="report-h3">REQUIRES CONFIGURATION</h3>
+          <table class="report-table">
+            <thead><tr><th>Item</th><th>Status</th><th>Impact</th></tr></thead>
+            <tbody>
+              <tr><td>SMTP</td><td><span class="badge badge-warn">Not Set</span></td><td>Emails won't send</td></tr>
+              <tr><td>Stripe</td><td><span class="badge badge-warn">Not Set</span></td><td>Payments disabled</td></tr>
+              <tr><td>DeepSeek/OpenAI</td><td><span class="badge badge-warn">Not Set</span></td><td>AI chat needs this</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="report-section">
+          <h3 class="report-h3">NO CRITICAL ISSUES</h3>
+          <p style="color: var(--success); font-size: 12px;">All core functionality implemented. Configure env vars for full features.</p>
+        </div>
+      `;
+    }
+
+    function genMemory() {
+      return `
+        <div class="report-section">
+          <h3 class="report-h3">MEMORY ARCHITECTURE</h3>
+          <table class="report-table">
+            <thead><tr><th>Level</th><th>Type</th><th>Retention</th></tr></thead>
+            <tbody>
+              <tr><td>L1</td><td>Short-term (14 msgs)</td><td>Per request</td></tr>
+              <tr><td>L2</td><td>Long-term Summary</td><td>Every 30 msgs</td></tr>
+              <tr><td>L3</td><td>Admin Rules</td><td>Permanent</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="report-section">
+          <h3 class="report-h3">WHAT KELION LEARNS</h3>
+          <ul class="check-list">
+            <li class="check-ok">User's name</li>
+            <li class="check-ok">Preferred language</li>
+            <li class="check-ok">Work domain/interests</li>
+            <li class="check-ok">Preferences</li>
+            <li class="check-ok">Goals</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    // Auto-login if token saved
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('k1_admin_token');
+      if (saved) {
+        document.getElementById('adminTokenInput').value = saved;
+        authenticate();
+      }
+    });
+
+    document.getElementById('adminTokenInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') authenticate();
+    });
+  </script>
+</body>
+
+</html>

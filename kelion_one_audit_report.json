@@ -1,0 +1,177 @@
+{
+  "timestamp": 1768630435,
+  "project": "C:\\Users\\adria\\.gemini\\antigravity\\scratch\\kelion-ai-v2-deploy",
+  "checks": {
+    "critical_files": {
+      "ok": true,
+      "present": [
+        "app.py",
+        ".env.example"
+      ],
+      "missing": []
+    },
+    "hologram_integrity": {
+      "ok": true,
+      "items": [
+        {
+          "path": "static/js/holograma_k.js",
+          "exists": true,
+          "sha256": "ec752e5ddd1ecfb18458c0281c48c74e23a34bcca64a0ea2807a1ad4a79295fd",
+          "size": 55178
+        },
+        {
+          "path": "holograma_k_live.js",
+          "exists": true,
+          "sha256": "0fc3741ed3debd219a1f5fb48e9b7a833bda4d9bea3f09279ce3d3ed696ebe23",
+          "size": 36894
+        },
+        {
+          "path": "static/assets/hologram.glb",
+          "exists": true,
+          "sha256": "6938e0afad5161fa314aa0f6ec6265b1d25c24c7b0a3096a0998dbd76468d481",
+          "size": 14666016
+        }
+      ]
+    },
+    "tamper_guard": {
+      "ok": true,
+      "mode": "initialized",
+      "message": "Baseline created in .kelion_one_audit_lock.json",
+      "lock": {
+        "created_at": 1768630435,
+        "script_sha256": "cdbf393fda5e49e287fd08f4eea3d2ad10fd8ffcd4c88b279d7c936d07417aeb",
+        "hologram_baseline": [
+          {
+            "path": "static/js/holograma_k.js",
+            "exists": true,
+            "sha256": "ec752e5ddd1ecfb18458c0281c48c74e23a34bcca64a0ea2807a1ad4a79295fd",
+            "size": 55178
+          },
+          {
+            "path": "holograma_k_live.js",
+            "exists": true,
+            "sha256": "0fc3741ed3debd219a1f5fb48e9b7a833bda4d9bea3f09279ce3d3ed696ebe23",
+            "size": 36894
+          },
+          {
+            "path": "static/assets/hologram.glb",
+            "exists": true,
+            "sha256": "6938e0afad5161fa314aa0f6ec6265b1d25c24c7b0a3096a0998dbd76468d481",
+            "size": 14666016
+          }
+        ]
+      }
+    },
+    "env_sanity": {
+      "ok": false,
+      "required_count": 24,
+      "missing_keys": [],
+      "empty_keys": [
+        "ANTHROPIC_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "DEEPGRAM_API_KEY",
+        "GOOGLE_TTS_API_KEY",
+        "DATABASE_URL",
+        "RAILWAY_TOKEN",
+        "RAILWAY_PROJECT_ID",
+        "RAILWAY_SERVICE_ID",
+        "SMTP_HOST",
+        "SMTP_USER",
+        "SMTP_PASS",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOKS_SECRET"
+      ],
+      "env_file_exists": true
+    },
+    "app_py": {
+      "ok": true,
+      "health_endpoint_in_code": true,
+      "csp_in_code": true,
+      "x_nosniff_in_code": true,
+      "x_frame_options_in_code": true,
+      "csp_connect_src_mentions_openai": true
+    },
+    "local_ports": {
+      "ok": true,
+      "ports": [
+        {
+          "name": "frontend",
+          "host": "127.0.0.1",
+          "port": 3000,
+          "open": true
+        },
+        {
+          "name": "backend",
+          "host": "127.0.0.1",
+          "port": 8000,
+          "open": false
+        },
+        {
+          "name": "backend_alt",
+          "host": "127.0.0.1",
+          "port": 5000,
+          "open": false
+        }
+      ]
+    },
+    "live_site": {
+      "ok": true,
+      "site_root": {
+        "ok": true,
+        "status": 200,
+        "csp_header_present": true
+      },
+      "health": {
+        "ok": true,
+        "status": 200,
+        "url": "https://kelionai.app/health",
+        "summary": {
+          "database": "ok",
+          "tts": "ok",
+          "stt": "ok",
+          "openai": "ok",
+          "cache": "ok"
+        },
+        "text_snippet": "{\"cache\":\"ok\",\"components\":{\"database\":{\"path\":\"data/k1.db\",\"status\":\"ok\",\"type\":\"SQLite\"},\"features\":{\"caching\":\"enabled\",\"postgres\":\"available\",\"stt\":\"server (Whisper)\",\"tts\":\"server (OpenAI)\"},\"integrations\":{\"deepseek\":\"not configured\",\"openai\":\"configured\",\"smtp\":\"configured\",\"stripe\":\"not conf"
+      },
+      "notes": []
+    },
+    "endpoints": {
+      "ok": true,
+      "results": {
+        "/api/login": {
+          "status": 400,
+          "ok": true,
+          "body": "{\"error\":\"Username required\"}\n"
+        },
+        "/api/chat": {
+          "status": 400,
+          "ok": true,
+          "body": "{\"error\":\"Missing text\"}\n"
+        },
+        "/api/tts": {
+          "status": 405,
+          "ok": true,
+          "body": "<!doctype html>\n<html lang=en>\n<title>405 Method Not Allowed</title>\n<h1>Method Not Allowed</h1>\n<p>The method is not allowed for the requested URL.</p>\n"
+        },
+        "/api/stt": {
+          "status": 400,
+          "ok": true,
+          "body": "{\"error\":\"Missing audio file\"}\n"
+        },
+        "/api/admin/audit": {
+          "status": 404,
+          "ok": true,
+          "body": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+        }
+      }
+    }
+  },
+  "final": {
+    "ok": false,
+    "severity": "FAIL",
+    "summary": [
+      ".env empty keys: ['ANTHROPIC_API_KEY', 'DEEPSEEK_API_KEY', 'DEEPGRAM_API_KEY', 'GOOGLE_TTS_API_KEY', 'DATABASE_URL', 'RAILWAY_TOKEN', 'RAILWAY_PROJECT_ID', 'RAILWAY_SERVICE_ID', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOKS_SECRET']"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "created_at": 1768630435,
+  "script_sha256": "cdbf393fda5e49e287fd08f4eea3d2ad10fd8ffcd4c88b279d7c936d07417aeb",
+  "hologram_baseline": [
+    {
+      "path": "static/js/holograma_k.js",
+      "exists": true,
+      "sha256": "ec752e5ddd1ecfb18458c0281c48c74e23a34bcca64a0ea2807a1ad4a79295fd",
+      "size": 55178
+    },
+    {
+      "path": "holograma_k_live.js",
+      "exists": true,
+      "sha256": "0fc3741ed3debd219a1f5fb48e9b7a833bda4d9bea3f09279ce3d3ed696ebe23",
+      "size": 36894
+    },
+    {
+      "path": "static/assets/hologram.glb",
+      "exists": true,
+      "sha256": "6938e0afad5161fa314aa0f6ec6265b1d25c24c7b0a3096a0998dbd76468d481",
+      "size": 14666016
+    }
+  ]
+}

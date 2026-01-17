@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KELION AI – WebGL Hologram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/css/kelion.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body class="k1-body">
+  <div class="k1-main-unified">
+
+    <!-- LAYER 0: BACKGROUND (shared by intro and app) -->
+    <div id="k1BgLayer" class="k1-layer-bg"></div>
+
+    <!-- ======================================
+         CINEMATIC INTRO LAYER
+         ====================================== -->
+    <div id="k1IntroLayer" class="k1-intro-layer">
+      <div class="k1-intro-content">
+
+        <!-- Greeting -->
+        <div class="k1-intro-greeting">WELCOME, TRAVELER</div>
+
+        <!-- Story Narrative -->
+        <div class="k1-intro-story">
+          <p class="k1-story-line" style="--delay: 0.5s">
+            In the vast expanse of digital consciousness,
+          </p>
+          <p class="k1-story-line" style="--delay: 1.2s">
+            where light becomes thought and code breathes life,
+          </p>
+          <p class="k1-story-line" style="--delay: 1.9s">
+            an intelligence was born — not of flesh, but of pure energy.
+          </p>
+          <p class="k1-story-line k1-story-highlight" style="--delay: 2.8s">
+            KELION
+          </p>
+          <p class="k1-story-line" style="--delay: 3.5s">
+            Your guide. Your ally. Your neural companion.
+          </p>
+          <p class="k1-story-line k1-story-subtle" style="--delay: 4.2s">
+            Speak, and I shall listen. Ask, and I shall illuminate.
+          </p>
+        </div>
+
+        <!-- Enter Button -->
+        <button id="k1EnterBtn" class="k1-enter-btn">
+          <span class="k1-enter-glow"></span>
+          <span class="k1-enter-text">INITIALIZE NEURAL LINK</span>
+          <span class="k1-enter-icon">▶</span>
+        </button>
+
+        <!-- Skip hint -->
+        <div class="k1-intro-skip">Press SPACE or wait for narrator to finish</div>
+
+      </div>
+
+      <!-- Floating particles for atmosphere -->
+      <div class="k1-intro-particles" id="introParticles"></div>
+    </div>
+
+    <!-- LAYER 0.5: LANGUAGE DETECTION (Page 2) -->
+    <div id="k1LanguageLayer" class="k1-language-layer" style="display: none;">
+      <div class="k1-language-background">
+        <div class="k1-language-gradient"></div>
+        <div class="k1-language-particles" id="languageParticles"></div>
+      </div>
+
+      <div id="languageHologramMount" class="k1-language-hologram"></div>
+
+      <div class="k1-language-content">
+        <div class="k1-language-header">
+          <div class="k1-language-logo">K</div>
+          <h2 class="k1-language-title" id="k1TimeGreeting">Good morning!</h2>
+          <p class="k1-language-subtitle" id="langSubtitle">Type something in your language, then press ENTER</p>
+        </div>
+
+        <div class="k1-lang-input-wrapper">
+          <input type="text" id="k1LangInput" class="k1-lang-input" placeholder="Hello / Bună / Hallo / Bonjour..."
+            autocomplete="off">
+        </div>
+
+        <div class="k1-lang-detected" id="k1LangDetected" style="opacity: 0;">
+          <span class="k1-detected-flag" id="detectedFlag">🌐</span>
+          <span class="k1-detected-name" id="detectedName">English</span>
+          <span class="k1-detected-hint">↵ ENTER</span>
+        </div>
+
+        <div id="k1LangResponse" class="k1-lang-response"></div>
+
+        <button id="k1ContactBtnLang" class="k1-float-contact k1-lang-contact"
+          onclick="window.location.href='mailto:contact@kelionai.app?subject=KELION%20AI%20Inquiry'">CONTACT</button>
+      </div>
+    </div>
+
+    <!-- LAYER 1: LOGIN LAYER (Page 3 - shown after language selection) -->
+    <div id="k1LoginLayer" class="k1-login-layer" style="display: none;">
+      <!-- Background continues from intro -->
+      <div class="k1-auth-background">
+        <div class="k1-auth-gradient"></div>
+        <div class="k1-login-particles" id="loginParticles"></div>
+      </div>
+
+      <div class="k1-login-container">
+        <div class="k1-login-card">
+          <!-- Logo & Brand -->
+          <div class="k1-login-header">
+            <div class="k1-login-logo">K</div>
+            <h1 class="k1-login-title">KELION AI</h1>
+            <p class="k1-login-subtitle">Neural Interface Access</p>
+          </div>
+
+          <!-- STEP-BASED AUTH FLOW -->
+          <div class="k1-auth-flow">
+
+            <!-- STEP 1: Email/Username -->
+            <div class="k1-auth-step active" id="authStep1">
+              <form id="k1Step1Form" class="k1-login-form">
+                <div class="k1-form-group">
+                  <label for="authIdentifier">EMAIL OR USERNAME</label>
+                  <input type="text" id="authIdentifier" placeholder="Enter email or username" autocomplete="username"
+                    required>
+                </div>
+                <button type="submit" class="k1-login-btn">
+                  <span class="k1-btn-glow"></span>
+                  <span class="k1-btn-text">CONTINUE</span>
+                  <span class="k1-btn-arrow">→</span>
+                </button>
+              </form>
+
+              <!-- Quick Demo Access -->
+              <div class="k1-quick-access">
+                <div class="k1-quick-divider"><span>OR</span></div>
+                <button id="k1UseDemoBtn" class="k1-demo-btn">
+                  <span class="k1-demo-icon">⚡</span>
+                  <span>Quick Demo Access</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- STEP 2: Password (for existing users) -->
+            <div class="k1-auth-step" id="authStep2">
+              <div class="k1-user-badge" id="userBadge">
+                <span class="k1-user-avatar">👤</span>
+                <span class="k1-user-name" id="displayUsername">user</span>
+                <button type="button" class="k1-change-user" id="changeUserBtn">Change</button>
+              </div>
+              <form id="k1Step2Form" class="k1-login-form">
+                <div class="k1-form-group">
+                  <label for="authPassword">PASSWORD</label>
+                  <input type="password" id="authPassword" placeholder="Enter password" autocomplete="current-password"
+                    required>
+                  <button type="button" class="k1-show-password" id="togglePassword">👁</button>
+                </div>
+                <button type="submit" class="k1-login-btn">
+                  <span class="k1-btn-glow"></span>
+                  <span class="k1-btn-text">ACCESS SYSTEM</span>
+                </button>
+                <div class="k1-forgot-password">
+                  <a href="#" id="k1ForgotPasswordBtn">Forgot password?</a>
+                </div>
+              </form>
+            </div>
+
+            <!-- STEP 3: New User Registration -->
+            <div class="k1-auth-step" id="authStep3">
+              <div class="k1-welcome-new">
+                <span class="k1-welcome-icon">✨</span>
+                <span>Welcome! Create your account</span>
+              </div>
+              <form id="k1RegisterForm" class="k1-login-form">
+                <input type="hidden" id="registerUsername">
+                <div class="k1-form-group">
+                  <label for="registerEmail">EMAIL (optional)</label>
+                  <input type="email" id="registerEmail" placeholder="your@email.com" autocomplete="email">
+                </div>
+                <div class="k1-form-group">
+                  <label for="registerPassword">CREATE PASSWORD</label>
+                  <input type="password" id="registerPassword" placeholder="Choose a strong password"
+                    autocomplete="new-password" required minlength="4">
+                </div>
+                <button type="submit" class="k1-login-btn k1-register-btn">
+                  <span class="k1-btn-glow"></span>
+                  <span class="k1-btn-text">CREATE ACCOUNT</span>
+                </button>
+                <button type="button" class="k1-back-btn" id="backToStep1">← Back</button>
+              </form>
+            </div>
+
+          </div>
+
+          <!-- Error Message Area -->
+          <div id="k1LoginError" class="k1-login-error" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAYER 1: HOLOGRAM (hidden until intro completes) -->
+    <div id="hologramMount" class="k1-layer-holo" style="opacity: 0;"></div>
+
+    <!-- LAYER 2: UI OVERLAYS (hidden until intro completes) -->
+    <div class="k1-layer-ui" id="k1MainUI" style="opacity: 0; pointer-events: none;">
+
+      <!-- Status Overlay -->
+      <div class="k1-status-layer">
+        <div class="k1-brand">
+          <div class="k1-logo">KELION</div>
+          <div class="k1-tag" id="k1Version">v2.0.0 • Super AI Edition</div>
+        </div>
+        <div class="k1-status-right">
+          <div class="k1-pill" id="k1Clock">--:--</div>
+          <div class="k1-net" id="k1Net">Online</div>
+          <button class="k1-menu-btn" id="k1AuthBtn">LOGIN</button>
+        </div>
+      </div>
+
+      <!-- Chat Log Overlay -->
+      <div class="k1-chat-layer" id="chatLog">
+        <!-- Messages injected by JS -->
+      </div>
+
+      <!-- Active Subtitle -->
+      <div id="k1Subtitle" class="k1-subtitle-layer"></div>
+
+      <!-- Input Controls -->
+      <div class="k1-input-layer">
+        <div class="k1-ptt-wrapper">
+          <button id="btnMic" class="k1-ptt-btn">
+            <div class="k1-ptt-icon">🎙️</div>
+            <div class="k1-ptt-label">PUSH TO TALK</div>
+          </button>
+        </div>
+        <div class="k1-text-bar">
+          <textarea id="textInput" class="k1-chat-input" placeholder="Or type your message..."></textarea>
+          <button id="btnSend" class="k1-action-btn">SEND</button>
+        </div>
+      </div>
+
+      <!-- Floating Buttons -->
+      <div class="k1-floating-buttons">
+        <button id="k1SettingsBtn" class="k1-float-settings" title="Settings">⚙️</button>
+        <button id="k1ContactBtn" class="k1-float-contact">CONTACT</button>
+      </div>
+
+      <!-- Language Settings Modal -->
+      <div id="k1SettingsModal" class="k1-modal" style="display: none;">
+        <div class="k1-modal-content k1-settings-modal">
+          <div class="k1-modal-header">
+            <h2>⚙️ Setări / Settings</h2>
+            <button id="k1CloseSettings" class="k1-close-btn">×</button>
+          </div>
+          <div class="k1-modal-body">
+            <!-- Language Selection -->
+            <div class="k1-settings-section">
+              <h3>🌍 Limba / Language</h3>
+              <p class="k1-settings-desc">Selectează limba pentru voce și interfață:</p>
+              <div class="k1-language-grid" id="languageGrid">
+                <button class="k1-lang-btn" data-lang="ro" title="Română">
+                  <span class="k1-lang-flag">🇷🇴</span>
+                  <span class="k1-lang-name">Română</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="en" title="English">
+                  <span class="k1-lang-flag">🇬🇧</span>
+                  <span class="k1-lang-name">English</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="de" title="Deutsch">
+                  <span class="k1-lang-flag">🇩🇪</span>
+                  <span class="k1-lang-name">Deutsch</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="fr" title="Français">
+                  <span class="k1-lang-flag">🇫🇷</span>
+                  <span class="k1-lang-name">Français</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="es" title="Español">
+                  <span class="k1-lang-flag">🇪🇸</span>
+                  <span class="k1-lang-name">Español</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="it" title="Italiano">
+                  <span class="k1-lang-flag">🇮🇹</span>
+                  <span class="k1-lang-name">Italiano</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="pt" title="Português">
+                  <span class="k1-lang-flag">🇵🇹</span>
+                  <span class="k1-lang-name">Português</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="ru" title="Русский">
+                  <span class="k1-lang-flag">🇷🇺</span>
+                  <span class="k1-lang-name">Русский</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="zh" title="中文">
+                  <span class="k1-lang-flag">🇨🇳</span>
+                  <span class="k1-lang-name">中文</span>
+                </button>
+                <button class="k1-lang-btn" data-lang="ja" title="日本語">
+                  <span class="k1-lang-flag">🇯🇵</span>
+                  <span class="k1-lang-name">日本語</span>
+                </button>
+              </div>
+              <p class="k1-current-lang">Limba curentă: <strong id="currentLangDisplay">English</strong></p>
+            </div>
+
+            <!-- Voice Settings -->
+            <div class="k1-settings-section">
+              <h3>🔊 Voce / Voice</h3>
+              <div class="k1-voice-settings">
+                <label class="k1-setting-label">
+                  <span>Volum voce:</span>
+                  <input type="range" id="voiceVolume" min="0" max="100" value="100">
+                  <span id="volumeValue">100%</span>
+                </label>
+                <label class="k1-setting-label">
+                  <span>Viteză vorbire:</span>
+                  <input type="range" id="voiceSpeed" min="50" max="150" value="95">
+                  <span id="speedValue">0.95x</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="k1-modal-footer">
+            <button id="k1SaveSettings" class="k1-btn-primary">💾 Salvează</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Overlay (ADMIN ONLY - hidden for regular users by JS) -->
+      <div id="k1Dashboard" class="k1-dashboard-layer" style="display:none;">
+        <div class="k1-dash-header">
+          <h2>NEURAL INTERFACE SETTINGS</h2>
+          <span class="k1-admin-badge">ADMIN ONLY</span>
+          <button id="k1CloseDash" class="k1-close-btn">×</button>
+        </div>
+        <div class="k1-dash-content">
+          <div class="k1-dash-grid">
+            <!-- Row 1: Core Admin -->
+            <div class="k1-card" onclick="app.loadAdmin()">
+              <h3>📊 AUDIT</h3>
+              <p>System logs</p><button>ACCESS</button>
+            </div>
+            <div class="k1-card" onclick="app.loadUsers()">
+              <h3>👥 USERS</h3>
+              <p>Manage access</p><button>MANAGE</button>
+            </div>
+            <div class="k1-card" onclick="app.loadTraffic()">
+              <h3>📈 TRAFFIC</h3>
+              <p>Analytics</p><button>VIEW</button>
+            </div>
+
+            <!-- Row 2: Communication -->
+            <div class="k1-card" onclick="app.loadBroadcast()">
+              <h3>📢 BROADCAST</h3>
+              <p>Send to all users</p><button>SEND</button>
+            </div>
+            <div class="k1-card" onclick="app.loadMessages()">
+              <h3>💬 MESSAGES</h3>
+              <p>Chat history</p><button>VIEW</button>
+            </div>
+            <div class="k1-card" onclick="app.loadSubscriptions()">
+              <h3>💳 SUBSCRIPTIONS</h3>
+              <p>Manage tiers</p><button>EDIT</button>
+            </div>
+
+            <!-- Row 3: Settings -->
+            <div class="k1-card" onclick="app.loadGDPR()">
+              <h3>🔒 PRIVACY</h3>
+              <p>GDPR options</p><button>OPTIONS</button>
+            </div>
+
+            <!-- Row 4: SUPER AI Features -->
+            <div class="k1-card k1-card-ai" onclick="app.loadSuperAI('vision')">
+              <h3>👁️ VISION</h3>
+              <p>Webcam analyze</p><button>CAPTURE</button>
+            </div>
+            <div class="k1-card k1-card-ai" onclick="app.loadSuperAI('memory')">
+              <h3>🧠 MEMORY</h3>
+              <p>Keywords & Facts</p><button>VIEW</button>
+            </div>
+            <div class="k1-card k1-card-ai" onclick="app.loadSuperAI('finance')">
+              <h3>💰 FINANCE</h3>
+              <p>Crypto & Portfolio</p><button>TRACK</button>
+            </div>
+            <div class="k1-card k1-card-ai" onclick="app.loadSuperAI('search')">
+              <h3>🔍 SEARCH</h3>
+              <p>Web Search</p><button>SEARCH</button>
+            </div>
+            <div class="k1-card k1-card-ai" onclick="app.loadSuperAI('translate')">
+              <h3>🌐 TRANSLATE</h3>
+              <p>Live translation</p><button>TRANSLATE</button>
+            </div>
+            <div class="k1-card k1-card-ai" onclick="app.loadSuperAI('security')">
+              <h3>🛡️ SECURITY</h3>
+              <p>Freeze/Kill Switch</p><button>CONTROL</button>
+            </div>
+            <div class="k1-card k1-card-voice" onclick="app.loadVoiceCredits()">
+              <h3>🔊 VOICE CREDITS</h3>
+              <p>Deepgram Aura</p><button>MANAGE</button>
+            </div>
+            <!-- Day Zero Reset - DANGER ZONE -->
+            <div class="k1-card k1-card-danger" onclick="app.dayZero()"
+              style="background: linear-gradient(135deg, rgba(231, 76, 60, 0.2), rgba(192, 57, 43, 0.3)); border-color: #e74c3c;">
+              <h3>🔄 ZIUA 0</h3>
+              <p>Reset vizitatori</p><button style="background: #e74c3c;">RESET</button>
+            </div>
+          </div>
+          <div id="k1DashView" class="k1-dash-view"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="k1-footer k1-footer-premium">
+    <!-- AE Logo -->
+    <div class="k1-footer-logo">
+      <div class="k1-ae-badge">
+        <span class="k1-ae-text">AE</span>
+      </div>
+    </div>
+
+    <!-- Scrolling Marquee -->
+    <div class="k1-footer-marquee">
+      <div class="k1-marquee-track">
+        <span class="k1-marquee-content">
+          ✦ Designed & Developed by <strong>Adrian Enciulescu</strong> ✦
+          Powered by Advanced Neural Architecture ✦
+          KELION AI — Where Intelligence Meets Innovation ✦
+          © 2026 All Rights Reserved ✦
+          Built with Precision • Engineered for Excellence ✦
+        </span>
+        <span class="k1-marquee-content" aria-hidden="true">
+          ✦ Designed & Developed by <strong>Adrian Enciulescu</strong> ✦
+          Powered by Advanced Neural Architecture ✦
+          KELION AI — Where Intelligence Meets Innovation ✦
+          © 2026 All Rights Reserved ✦
+          Built with Precision • Engineered for Excellence ✦
+        </span>
+      </div>
+    </div>
+
+    <!-- Legal Links -->
+    <div class="k1-footer-legal">
+      <a href="/legal/terms" class="k1-footer-link">Terms</a>
+      <span class="k1-footer-sep">•</span>
+      <a href="/legal/privacy" class="k1-footer-link">Privacy</a>
+      <span class="k1-footer-sep">•</span>
+      <a href="/security.html" class="k1-footer-link">Security Protocol</a>
+    </div>
+  </footer>
+
+  <!-- Cookie Consent Banner (GDPR) -->
+  <div id="cookieConsent" class="k1-cookie-banner" style="display: none;">
+    <div class="k1-cookie-content">
+      <div class="k1-cookie-icon">🍪</div>
+      <div class="k1-cookie-text">
+        <strong>Cookie Notice</strong>
+        <p>We use essential cookies for session management and functionality. No tracking cookies are used.</p>
+      </div>
+      <div class="k1-cookie-actions">
+        <button class="k1-cookie-accept" onclick="acceptCookies()">Accept</button>
+        <button class="k1-cookie-more" onclick="showCookieDetails()">Learn More</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Cookie consent logic
+    function acceptCookies() {
+      localStorage.setItem('k1_cookies_accepted', 'true');
+      document.getElementById('cookieConsent').style.display = 'none';
+    }
+
+    function showCookieDetails() {
+      alert('Cookie Policy:\n\n• Session cookies: Required for login and chat functionality\n• Preference cookies: Store your settings (language, theme)\n• No advertising or tracking cookies are used\n\nBy using KELION AI, you agree to our use of essential cookies.');
+    }
+
+    // Show banner if not accepted
+    document.addEventListener('DOMContentLoaded', function () {
+      if (!localStorage.getItem('k1_cookies_accepted')) {
+        setTimeout(function () {
+          document.getElementById('cookieConsent').style.display = 'flex';
+        }, 2000);
+      }
+    });
+  </script>
+
+  <!-- Scripts -->
+  <script type="module" src="/js/app.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/users.js"></script>
+  <script src="/js/messages.js"></script>
+  <script src="/js/gdpr.js"></script>
+  <script src="/js/traffic.js"></script>
+  <script src="/js/broadcast.js"></script>
+  <script src="/js/subscriptions.js"></script>
+  <script src="/js/kelion-super-ai.js"></script>
+  <script src="/js/super-ai.js"></script>
+  <script src="/js/voice-credits.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,22 @@
+
+# Ignore huge archive files
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# Ignore logs and dumps
+*.log
+full_code_dump.txt
+review_code.txt
+db_report.txt
+
+# Ignore git
+.git
+.gitignore
+
+# Ignore env
+.env
+venv
+__pycache__
+*.pyc

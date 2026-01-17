@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - KELION AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Rajdhani:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            background: linear-gradient(135deg, #030810 0%, #0a1525 50%, #030810 100%);
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .page-container {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: rgba(0, 15, 30, 0.9);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 20px;
+            padding: 50px 60px;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            color: #00f3ff;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+        }
+
+        .icon {
+            font-size: 70px;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 22px;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 243, 255, 0.2);
+            border-top-color: #00f3ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .success {
+            color: #00ff96;
+        }
+
+        .error {
+            color: #ff4d6d;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 35px;
+            background: linear-gradient(135deg, #00f3ff 0%, #00d4e0 100%);
+            border: none;
+            border-radius: 25px;
+            color: #0a1628;
+            font-weight: bold;
+            font-size: 14px;
+            text-decoration: none;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 243, 255, 0.3);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-container">
+        <div class="card">
+            <div class="logo">KELION AI</div>
+
+            <div id="loading">
+                <div class="icon">✉️</div>
+                <h1 class="title">Verifying Email</h1>
+                <p class="message">Please wait...</p>
+                <div class="spinner"></div>
+            </div>
+
+            <div id="success" class="hidden">
+                <div class="icon">✅</div>
+                <h1 class="title success">Email Verified!</h1>
+                <p class="message">Your email has been verified successfully.</p>
+                <a href="/" class="btn">GO TO KELION AI</a>
+            </div>
+
+            <div id="error" class="hidden">
+                <div class="icon">❌</div>
+                <h1 class="title error">Verification Failed</h1>
+                <p class="message" id="errorMsg">The link is invalid or expired.</p>
+                <a href="/" class="btn">BACK TO KELION AI</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function verify() {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            const userId = params.get('user');
+
+            if (!token || !userId) {
+                showError('Invalid verification link.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/verify-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, token })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.ok) {
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('success').classList.remove('hidden');
+                } else {
+                    showError(data.error || 'Verification failed.');
+                }
+            } catch (err) {
+                showError('Connection error.');
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('errorMsg').textContent = msg;
+            document.getElementById('error').classList.remove('hidden');
+        }
+
+        verify();
+    </script>
+</body>
+
+</html>

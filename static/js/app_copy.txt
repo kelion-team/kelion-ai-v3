@@ -1,0 +1,1787 @@
+﻿import { HologramUnit } from "./holograma_k.js";
+
+/* Presence UI status bar + tabs */
+function initStatusBar() {
+  const vEl = document.getElementById("k1Version");
+  const cEl = document.getElementById("k1Clock");
+  const dEl = document.getElementById("k1Date");
+  if (vEl) vEl.textContent = window.K1_VERSION || "v1.0.0 â€¢ Kelion AI";
+  function tick() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    if (cEl) cEl.textContent = `${hh}:${mm}`;
+    if (dEl) dEl.textContent = now.toISOString().slice(0, 10);
+  }
+  tick();
+  setInterval(tick, 30_000);
+}
+
+function initTabs() {
+  const readBtn = document.getElementById("tabRead");
+  const writeBtn = document.getElementById("tabWrite");
+  const pRead = document.getElementById("panelRead");
+  const pWrite = document.getElementById("panelWrite");
+  const setTab = (which) => {
+    if (!readBtn || !writeBtn || !pRead || !pWrite) return;
+    if (which === "read") {
+      readBtn.classList.add("active"); writeBtn.classList.remove("active");
+      pRead.classList.add("active"); pWrite.classList.remove("active");
+    } else {
+      writeBtn.classList.add("active"); readBtn.classList.remove("active");
+      pWrite.classList.add("active"); pRead.classList.remove("active");
+      const ti = document.getElementById("textInput");
+      if (ti) ti.focus();
+    }
+  };
+  if (readBtn) readBtn.onclick = () => setTab("read");
+  if (writeBtn) writeBtn.onclick = () => setTab("write");
+  setTab("write");
+}
+
+// DOM Elements
+const chatLog = document.getElementById("chatLog");
+const subtitleEl = document.getElementById("k1Subtitle");
+
+function append(role, text) {
+  // Save last bot text for syncing
+  if (role === 'bot') {
+    window.lastBotText = text;
+  }
+
+  // Add to History Log (always)
+  const div = document.createElement("div");
+  div.className = `msg ${role}`;
+  div.textContent = text;
+  if (chatLog) {
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  // If BOT, trigger Typewriter Subtitle
+  if (role === 'bot') {
+    runTypewriter(text);
+  }
+}
+
+let typewriterTimeout;
+let activeTypewriterFinish = null;
+
+function finishTypewriter() {
+  if (activeTypewriterFinish) activeTypewriterFinish();
+}
+
+function runTypewriter(text, audioDuration = 0) {
+  if (!subtitleEl) return;
+
+  // Clear previous
+  subtitleEl.innerHTML = '';
+  clearTimeout(typewriterTimeout);
+
+  const span = document.createElement("span");
+  span.className = "k1-subtitle-text";
+  subtitleEl.appendChild(span);
+
+  // Calculate speed
+  let charDelay = 50; // default ms per char
+  if (audioDuration > 0 && text.length > 0) {
+    charDelay = (audioDuration * 1000) / text.length;
+  }
+
+  // Clamp speed to reasonable limits (human reading/speaking)
+  charDelay = Math.max(20, Math.min(charDelay, 150));
+
+  let i = 0;
+  function type() {
+    if (i < text.length) {
+      span.textContent += text.charAt(i);
+      i++;
+      typewriterTimeout = setTimeout(type, charDelay);
+    } else {
+      // Done naturally
+      activeTypewriterFinish = null;
+      setTimeout(() => {
+        span.classList.add("k1-slide-out");
+      }, 1000);
+    }
+  }
+
+  // Register finisher (called if audio ends early)
+  activeTypewriterFinish = () => {
+    clearTimeout(typewriterTimeout);
+    span.textContent = text; // Fill rest instantly
+    activeTypewriterFinish = null;
+    setTimeout(() => { span.classList.add("k1-slide-out"); }, 1000);
+  };
+
+  type();
+}
+
+const $ = (id) => document.getElementById(id);
+
+// Elements matching index.html
+const welcome = $("welcome");
+const enterBtn = $("enterBtn");
+const clockEl = $("k1Clock");
+const modeEl = $("k1Version");
+const cloudEl = $("k1Net");
+const chatInput = $("textInput");
+const sendBtn = $("btnSend");
+const micBtn = $("btnMic");
+const sourcesBox = $("chatLog");
+
+const pricingBox = $("pricingBox");
+const contactBtn = $("contactBtn");
+const contactOk = $("contactOk");
+
+// Create audio element for TTS
+let audioEl = $("tts");
+if (!audioEl) {
+  audioEl = document.createElement("audio");
+  audioEl.id = "tts";
+  audioEl.style.display = "none";
+  document.body.appendChild(audioEl);
+}
+
+// Unlock audio context on user gesture (required for autoplay in browsers)
+let audioContextUnlocked = false;
+function unlockAudioContext() {
+  if (audioContextUnlocked) return;
+
+  // Create and resume AudioContext
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (AudioContext) {
+    const ctx = new AudioContext();
+    ctx.resume().then(() => {
+      console.log("AudioContext unlocked");
+      audioContextUnlocked = true;
+    });
+  }
+
+  // Also play a silent audio to unlock
+  audioEl.muted = true;
+  audioEl.play().then(() => {
+    audioEl.pause();
+    audioEl.muted = false;
+    audioEl.currentTime = 0;
+    console.log("Audio element unlocked");
+  }).catch(() => { });
+}
+
+// ======================================
+// WEB SPEECH API - Free Browser TTS
+// ======================================
+let speechSynthesis = window.speechSynthesis;
+let currentUtterance = null;
+
+// ======================================
+// LANGUAGE MANAGEMENT - Per User
+// ======================================
+// Language is stored per user: k1_lang_{userId}
+// - "demo" user: always English
+// - New users: start with English
+// - After detection: language is saved for that specific user
+
+function getUserLanguageKey() {
+  const userId = localStorage.getItem('k1_user_id') || 'anonymous';
+  return `k1_lang_${userId}`;
+}
+
+function getCurrentUserLanguage() {
+  const username = (localStorage.getItem('k1_user') || '').toLowerCase();
+
+  // Demo user always gets English
+  if (username === 'demo') {
+    return 'en';
+  }
+
+  // Get user-specific language or default to English
+  const langKey = getUserLanguageKey();
+  const savedLang = localStorage.getItem(langKey);
+
+  // STRICT: Only respect saved language if explicitly set manually
+  // This prevents "accidental" or "too fast" auto-detection from locking user in wrong language
+  const isManual = localStorage.getItem(getUserLanguageKey() + '_manual') === 'true';
+
+  if (savedLang && isManual) {
+    return savedLang;
+  }
+
+  return 'en';
+}
+
+// Current detected language (loaded per user)
+let currentLanguage = getCurrentUserLanguage();
+
+// Voice mapping by language code - preferred MALE NATIVE fluent voices for each language
+// Prioritizing natural-sounding, high-quality MALE voices for native speech
+const LANGUAGE_VOICE_PREFERENCES = {
+  'en': ['Microsoft David Desktop', 'Microsoft David', 'Google UK English Male', 'Daniel', 'Alex', 'Tom'],
+  'ro': ['Microsoft Andrei', 'Andrei', 'Google romÃ¢nÄƒ'],
+  'de': ['Microsoft Stefan Desktop', 'Microsoft Stefan', 'Google Deutsch', 'Markus'],
+  'es': ['Microsoft Pablo Desktop', 'Microsoft Pablo', 'Jorge', 'Diego', 'Google espaÃ±ol'],
+  'fr': ['Microsoft Paul Desktop', 'Microsoft Paul', 'Thomas', 'Google franÃ§ais'],
+  'it': ['Microsoft Cosimo Desktop', 'Microsoft Cosimo', 'Luca', 'Google italiano'],
+  'pt': ['Microsoft Daniel Desktop', 'Microsoft Daniel', 'Duarte', 'Google portuguÃªs'],
+  'ru': ['Microsoft Pavel Desktop', 'Microsoft Pavel', 'Dmitri', 'Yuri', 'Google Ñ€ÑƒÑÑÐºÐ¸Ð¹'],
+  'pl': ['Microsoft Adam Desktop', 'Microsoft Adam', 'Krzysztof', 'Google polski'],
+  'uk': ['Google ÑƒÐºÑ€Ð°Ñ—Ð½ÑÑŒÐºÐ°'],
+  'nl': ['Microsoft Frank Desktop', 'Microsoft Frank', 'Xander', 'Google Nederlands'],
+  'ja': ['Microsoft Ichiro Desktop', 'Microsoft Ichiro', 'Otoya', 'Google æ—¥æœ¬èªž'],
+  'zh': ['Microsoft Kangkang Desktop', 'Microsoft Kangkang', 'Google ä¸­æ–‡'],
+  'ko': ['Google í•œêµ­ì–´'],
+  'ar': ['Maged', 'Google Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©'],
+  'hi': ['Google à¤¹à¤¿à¤¨à¥à¤¦à¥€'],
+  'tr': ['Microsoft Tolga Desktop', 'Microsoft Tolga', 'Google TÃ¼rkÃ§e'],
+  'default': ['Microsoft David Desktop', 'Microsoft David', 'Google UK English Male', 'Daniel', 'Alex']
+};
+
+function setCurrentLanguage(langCode) {
+  const username = (localStorage.getItem('k1_user') || '').toLowerCase();
+
+  // Demo user cannot change language - always English
+  if (username === 'demo') {
+    currentLanguage = 'en';
+    console.log('Demo user: Language locked to English');
+    return;
+  }
+
+  const normalizedLang = (langCode || 'en').toLowerCase().substring(0, 2);
+  currentLanguage = normalizedLang;
+
+  // Save per user
+  const langKey = getUserLanguageKey();
+  localStorage.setItem(langKey, normalizedLang);
+  // Mark as EXPLICITLY set manually
+  localStorage.setItem(langKey + '_manual', 'true');
+
+  console.log(`Language switched to: ${normalizedLang} (saved for user, manual=true)`);
+}
+
+function resetLanguageToDefault() {
+  currentLanguage = 'en';
+  // Note: This doesn't clear the user's saved preference, just the current session
+  console.log('Language reset to English (session only)');
+}
+
+// Reload user language on login (called after authentication)
+function reloadUserLanguage() {
+  currentLanguage = getCurrentUserLanguage();
+  console.log(`Loaded language for user: ${currentLanguage}`);
+}
+
+function speakWithBrowserTTS(text, onStart, onEnd) {
+  if (!speechSynthesis) {
+    console.warn("Web Speech API not supported");
+    if (onEnd) onEnd();
+    return;
+  }
+
+  // Cancel any ongoing speech
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+
+  // Configure voice settings for NATURAL fluent native speech
+  utterance.rate = 0.95;   // Slightly slower for natural fluency
+  utterance.pitch = 1.0;   // Natural pitch for native-sounding voice
+  utterance.volume = 1.0;
+
+  // Try to find a good voice for the CURRENT LANGUAGE
+  const voices = speechSynthesis.getVoices();
+  console.log("Available voices:", voices.map(v => `${v.name} (${v.lang})`));
+  console.log("Current language for TTS:", currentLanguage);
+
+  // Get preferred voices for current language
+  const preferredVoices = LANGUAGE_VOICE_PREFERENCES[currentLanguage] || LANGUAGE_VOICE_PREFERENCES['default'];
+
+  let selectedVoice = null;
+
+  // First try exact match with preferred voices for current language
+  for (const preferred of preferredVoices) {
+    selectedVoice = voices.find(v => v.name.includes(preferred));
+    if (selectedVoice) {
+      console.log(`Found preferred voice for ${currentLanguage}: ${selectedVoice.name}`);
+      break;
+    }
+  }
+
+  // If no preferred voice, find any native voice matching the language code
+  if (!selectedVoice) {
+    selectedVoice = voices.find(v =>
+      v.lang.toLowerCase().startsWith(currentLanguage)
+    );
+    if (selectedVoice) {
+      console.log(`Found language-matched native voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+    }
+  }
+
+  // Fallback: any voice for current language
+  if (!selectedVoice) {
+    selectedVoice = voices.find(v => v.lang.toLowerCase().startsWith(currentLanguage));
+  }
+
+  // Last resort: any English voice
+  if (!selectedVoice) {
+    selectedVoice = voices.find(v => v.lang.startsWith('en'));
+  }
+
+  if (selectedVoice) {
+    utterance.voice = selectedVoice;
+    console.log("Using voice:", selectedVoice.name);
+  }
+
+  utterance.onstart = () => {
+    console.log("Browser TTS started");
+    if (onStart) onStart();
+  };
+
+  utterance.onend = () => {
+    console.log("Browser TTS ended");
+    currentUtterance = null;
+    if (onEnd) onEnd();
+  };
+
+  utterance.onerror = (e) => {
+    console.error("Browser TTS error:", e);
+    currentUtterance = null;
+    if (onEnd) onEnd();
+  };
+
+  currentUtterance = utterance;
+  speechSynthesis.speak(utterance);
+}
+
+// Preload voices (they may not be available immediately)
+if (speechSynthesis) {
+  speechSynthesis.onvoiceschanged = () => {
+    console.log("Voices loaded:", speechSynthesis.getVoices().length);
+  };
+}
+
+
+const USER_ID = localStorage.getItem("k1_user_id") || (() => {
+  const id = crypto.randomUUID();
+  localStorage.setItem("k1_user_id", id);
+  return id;
+})();
+
+const SESSION_ID = localStorage.getItem("k1_session_id") || (() => {
+  const id = crypto.randomUUID();
+  localStorage.setItem("k1_session_id", id);
+  return id;
+})();
+
+let recording = false;
+let mediaRecorder = null;
+let chunks = [];
+
+function setSources(sources = []) {
+  if (!sources || !sources.length || !sourcesBox) {
+    if (sourcesBox) sourcesBox.innerHTML = "";
+    return;
+  }
+  const items = sources.slice(0, 5).map((s) => {
+    const a = document.createElement("a");
+    a.href = s.url;
+    a.target = "_blank";
+    a.rel = "noreferrer";
+    a.textContent = s.title || s.url;
+    const trust = (s.trust !== undefined) ? ` (trust ${s.trust}/100)` : '';
+    const span = document.createElement('span');
+    span.className = 'small';
+    span.style.marginLeft = '6px';
+    span.textContent = trust;
+    const row = document.createElement("div");
+    row.append("â€¢ ", a, span);
+    return row.outerHTML;
+  }).join("");
+  sourcesBox.innerHTML = `<div class="small" style="font-weight:600;margin-bottom:4px;">Sources</div>${items}`;
+}
+
+// Dictionary for localized logout messages
+const GOODBYE_MESSAGES = {
+  'en': "Session ended. Goodbye!",
+  'ro': "Sesiune Ã®ncheiatÄƒ. La revedere!",
+  'de': "Sitzung beendet. Auf Wiedersehen!",
+  'default': "Session ended. Goodbye!"
+};
+
+async function handleLogout() {
+  const lang = getCurrentUserLanguage();
+  const msg = GOODBYE_MESSAGES[lang] || GOODBYE_MESSAGES['default'];
+
+  // Show and speak message
+  append('bot', msg);
+
+  if (window.speechSynthesis) {
+    speakWithBrowserTTS(msg);
+  }
+
+  // Clear Session Data (Auth is SESSION ONLY)
+  sessionStorage.removeItem('k1_authenticated');
+  sessionStorage.removeItem('k1_api_token');
+  // NOTE: k1_user/k1_user_id remain in localStorage for username memory (but not auth)
+
+  // Reload after delay
+  setTimeout(() => {
+    location.reload();
+  }, 2500);
+}
+
+async function login() {
+  // Get authenticated user from localStorage (username memory)
+  const authenticatedUser = localStorage.getItem('k1_user') || 'user';
+  const authenticatedUserId = localStorage.getItem('k1_user_id') || USER_ID;
+
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: authenticatedUserId, user: authenticatedUser })
+    });
+    const data = await res.json();
+    if (modeEl) modeEl.textContent = `v1.0.0 â€¢ Kelion AI`;
+    if (cloudEl) cloudEl.textContent = data.status || "Online";
+  } catch (e) {
+    console.error("Login error:", e);
+  }
+
+  // Auth / Menu Logic
+  const authBtn = document.getElementById("k1AuthBtn");
+  const dash = document.getElementById("k1Dashboard");
+  const closeDash = document.getElementById("k1CloseDash");
+
+  if (closeDash) closeDash.onclick = () => { dash.style.display = "none"; };
+
+  if (authBtn) {
+    // Check SESSION STORAGE for active login
+    const isAuthenticated = sessionStorage.getItem('k1_authenticated') === 'true';
+    const username = localStorage.getItem('k1_user') || 'User';
+
+    // Unified Login/Logout Logic
+    if (isAuthenticated) {
+      // 1. Change Button to LOGOUT
+      authBtn.textContent = 'LOGOUT';
+      authBtn.title = 'End Session';
+
+      // 2. Inject MENU Button for Dashboard Access (ADMIN ONLY)
+      // Neural Interface Settings is restricted to admin users
+      const isAdminUser = username.toLowerCase() === 'admin';
+
+      if (isAdminUser && !document.getElementById('k1MenuBtn')) {
+        const menuBtn = document.createElement('button');
+        menuBtn.id = 'k1MenuBtn';
+        menuBtn.className = 'k1-menu-btn';
+        menuBtn.textContent = 'ADMIN';
+        menuBtn.style.marginRight = '8px';
+        menuBtn.onclick = () => { if (dash) dash.style.display = 'flex'; };
+        // Insert before Logout button
+        authBtn.parentNode.insertBefore(menuBtn, authBtn);
+      }
+
+      // Logout handler
+      authBtn.onclick = async () => {
+        handleLogout();
+      };
+    } else {
+      authBtn.textContent = 'LOGIN';
+      authBtn.onclick = async () => {
+        // Clear any stale auth and reload to show login page
+        sessionStorage.removeItem('k1_authenticated');
+        localStorage.removeItem('k1_authenticated'); // Cleanup legacy
+        location.reload();
+      };
+
+      // Remove menu button if it exists (from previous state)
+      const menu = document.getElementById('k1MenuBtn');
+      if (menu) menu.remove();
+    }
+  }
+
+  // Add logout button to dashboard
+  addLogoutButton();
+
+  // Start polling for broadcast messages (checks every 5 min)
+  startBroadcastPolling();
+
+  const k1ContactBtn = document.getElementById("k1ContactBtn");
+  if (k1ContactBtn) {
+    k1ContactBtn.onclick = () => {
+      window.location.href = "mailto:contact@kelionai.app?subject=K1%20Inquiry";
+    };
+  }
+}
+
+// ============================================
+// BROADCAST BANNER SYSTEM
+// ============================================
+let broadcastPollInterval = null;
+
+async function checkPendingBroadcasts() {
+  const userId = localStorage.getItem('k1_user');
+  if (!userId) return;
+
+  try {
+    const res = await fetch(`/api/broadcasts/pending?user_id=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    const broadcasts = data.broadcasts || [];
+
+    if (broadcasts.length > 0) {
+      showBroadcastBanner(broadcasts[0]);
+    }
+  } catch (e) {
+    console.log('No pending broadcasts or error:', e);
+  }
+}
+
+// Start polling for new broadcasts every 5 minutes
+function startBroadcastPolling() {
+  if (broadcastPollInterval) return; // Already running
+
+  // Check immediately
+  checkPendingBroadcasts();
+
+  // Then poll every 5 minutes (300000ms)
+  broadcastPollInterval = setInterval(() => {
+    checkPendingBroadcasts();
+  }, 300000);
+
+  console.log('ðŸ“¢ Broadcast polling started (every 5 min)');
+}
+
+function stopBroadcastPolling() {
+  if (broadcastPollInterval) {
+    clearInterval(broadcastPollInterval);
+    broadcastPollInterval = null;
+  }
+}
+
+function showBroadcastBanner(broadcast) {
+  // Remove existing banner if any
+  const existing = document.getElementById('k1BroadcastBanner');
+  if (existing) existing.remove();
+
+  const priorityColors = {
+    'info': '#00d4ff',
+    'warning': '#ffa500',
+    'critical': '#ff4444'
+  };
+
+  const priorityIcons = {
+    'info': 'â„¹ï¸',
+    'warning': 'âš ï¸',
+    'critical': 'ðŸš¨'
+  };
+
+  const banner = document.createElement('div');
+  banner.id = 'k1BroadcastBanner';
+  banner.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, ${priorityColors[broadcast.priority] || '#00d4ff'}22, #0a0f1a);
+    border-bottom: 2px solid ${priorityColors[broadcast.priority] || '#00d4ff'};
+    padding: 20px;
+    z-index: 10000;
+    text-align: center;
+    animation: slideDown 0.5s ease-out;
+  `;
+
+  banner.innerHTML = `
+    <div style="max-width: 800px; margin: 0 auto;">
+      <div style="font-size: 18px; font-weight: 600; color: ${priorityColors[broadcast.priority] || '#00d4ff'}; margin-bottom: 8px;">
+        ${priorityIcons[broadcast.priority] || ''} ${broadcast.title}
+      </div>
+      <div style="color: #ccc; margin-bottom: 15px; line-height: 1.5;">
+        ${broadcast.body}
+      </div>
+      <button id="confirmBroadcastBtn" style="
+        background: ${priorityColors[broadcast.priority] || '#00d4ff'};
+        color: #000;
+        border: none;
+        padding: 10px 30px;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 4px;
+        font-family: 'Orbitron', sans-serif;
+      ">CONFIRM RECEIPT</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  document.getElementById('confirmBroadcastBtn').onclick = async () => {
+    const userId = localStorage.getItem('k1_user');
+    try {
+      await fetch('/api/broadcast/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broadcast_id: broadcast.id, user_id: userId })
+      });
+      banner.remove();
+      // Check for more broadcasts
+      checkPendingBroadcasts();
+    } catch (e) {
+      console.error('Failed to confirm broadcast:', e);
+    }
+  };
+}
+
+function addLogoutButton() {
+  const dashGrid = document.querySelector('.k1-dash-grid');
+  if (!dashGrid) return;
+
+  // Check if logout button already exists
+  if (document.getElementById('k1LogoutCard')) return;
+
+  const logoutCard = document.createElement('div');
+  logoutCard.id = 'k1LogoutCard';
+  logoutCard.className = 'k1-card';
+  logoutCard.innerHTML = `
+    <h3>LOGOUT</h3>
+    <p>Exit session</p>
+    <button id="k1LogoutBtn">SIGN OUT</button>
+  `;
+  dashGrid.appendChild(logoutCard);
+
+  const logoutBtn = document.getElementById('k1LogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.onclick = () => {
+      handleLogout();
+    };
+  }
+}
+
+function tickClock() {
+  if (!clockEl) return;
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  clockEl.textContent = `${hh}:${mm}:${ss}`;
+}
+setInterval(tickClock, 500);
+tickClock();
+
+// Tabs
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tabbody").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    const tabEl = $("tab-" + tab);
+    if (tabEl) tabEl.classList.add("active");
+  });
+});
+
+// WebGL hologram - Lazy initialization
+let holo = null;
+let holoInitialized = false;
+
+function initHologram() {
+  if (holoInitialized) return;
+
+  const hologramMount = document.getElementById('hologramMount');
+  if (!hologramMount) {
+    console.error('Hologram mount not found!');
+    return;
+  }
+
+  // Ensure container is visible and has size
+  hologramMount.style.opacity = '1';
+  hologramMount.style.visibility = 'visible';
+
+  // Force layout recalculation
+  hologramMount.offsetHeight;
+
+  console.log('Initializing hologram...', hologramMount.clientWidth, hologramMount.clientHeight);
+
+  holo = new HologramUnit("hologramMount");
+  holo.init();
+  holo.attachAudioElement(audioEl);
+
+  audioEl.addEventListener("play", () => holo.setState("speak"));
+  audioEl.addEventListener("ended", () => {
+    // INSTANT mouth stop when audio ends
+    holo.resetMouth();
+    holo.setState("idle");
+  });
+
+  // Force resize after a short delay to ensure proper dimensions
+  setTimeout(() => {
+    if (holo) holo.resize();
+  }, 100);
+
+  setTimeout(() => {
+    if (holo) holo.resize();
+  }, 500);
+
+  holoInitialized = true;
+  console.log('Hologram initialized!');
+}
+
+async function sendFeedback(rating, correction = "") {
+  try {
+    await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: USER_ID, sessionId: SESSION_ID, rating, correction })
+    });
+  } catch (e) { }
+}
+
+async function sendText(text) {
+  const t = (text || "").trim();
+  if (!t) return;
+  append("user", t);
+  if (chatInput) chatInput.value = "";
+  setSources([]);
+  // Stop listening, start processing
+  if (holo) holo.setListening(false);
+  holo.setState("processing");
+
+  try {
+    // Use Super AI endpoint (Claude Brain with memory, keywords, emotions)
+    const res = await fetch("/api/super/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Token": localStorage.getItem("k1_api_token") || ""
+      },
+      body: JSON.stringify({
+        message: t,  // Super AI uses 'message' instead of 'text'
+        userId: USER_ID,
+        sessionId: SESSION_ID
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      append("bot", data.error || "Request failed.");
+      holo.setState("idle");
+      return;
+    }
+    append("bot", data.text || "");
+
+    // Feedback buttons
+    const fbRow = document.createElement("div");
+    fbRow.className = "small";
+    fbRow.style.margin = "6px 0 0";
+    fbRow.innerHTML = `<button class="btn" style="padding:6px 10px" id="fbUp">ðŸ‘</button> <button class="btn" style="padding:6px 10px" id="fbDown">ðŸ‘Ž</button>`;
+    if (chatLog) {
+      chatLog.appendChild(fbRow);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+    const upBtn = fbRow.querySelector("#fbUp");
+    const downBtn = fbRow.querySelector("#fbDown");
+    if (upBtn) upBtn.onclick = () => sendFeedback(5);
+    if (downBtn) downBtn.onclick = () => sendFeedback(1);
+
+    setSources(data.sources || []);
+
+    // Set hologram state using the full backend response structure
+    holo.setStateFromBackend({
+      animation: data.animation || 'idle',
+      emotion: data.emotion || 'calm',
+      lipsync: data.lipsync
+    });
+
+    // Handle audio/speech output
+    if (data.useBrowserTTS && data.text) {
+      // Use free browser Web Speech API
+      console.log("Using browser TTS (free)");
+      speakWithBrowserTTS(
+        data.text,
+        () => {
+          // On start - set hologram to speaking
+          if (holo) holo.setState("speak");
+          runTypewriter(data.text, data.text.length * 0.06); // Estimate duration
+        },
+        () => {
+          // On end - INSTANT mouth stop, then return to idle
+          if (holo) {
+            holo.resetMouth(); // Instantly close mouth
+            holo.setState("idle");
+          }
+          finishTypewriter(); // Force text to complete if it lagged
+        }
+      );
+    } else if (data.audioUrl) {
+      // Use server-generated audio (OpenAI TTS)
+      console.log("Loading audio from:", data.audioUrl);
+      audioEl.src = data.audioUrl;
+      audioEl.volume = 1.0;
+
+      audioEl.onloadedmetadata = () => {
+        console.log("Audio loaded, duration:", audioEl.duration);
+        if (window.lastBotText) {
+          runTypewriter(window.lastBotText, audioEl.duration);
+        }
+      };
+
+      audioEl.onerror = (e) => {
+        console.error("Audio load error:", e, audioEl.error);
+      };
+
+      try {
+        await audioEl.play();
+        console.log("Audio playing successfully");
+      } catch (e) {
+        console.warn("Audio autoplay blocked:", e.message);
+        // Store pending audio for manual trigger
+        window.pendingAudio = audioEl;
+        // Show a hint to the user
+        const hint = document.createElement("div");
+        hint.className = "audio-hint";
+        hint.innerHTML = "ðŸ”Š Click anywhere to enable audio";
+        hint.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,255,255,0.2);color:#0ff;padding:10px 20px;border-radius:20px;cursor:pointer;z-index:9999;font-size:14px;border:1px solid #0ff;";
+        hint.onclick = async () => {
+          if (window.pendingAudio) {
+            try {
+              await window.pendingAudio.play();
+              console.log("Audio playing after user gesture");
+            } catch (err) {
+              console.error("Still cannot play audio:", err);
+            }
+          }
+          hint.remove();
+        };
+        document.body.appendChild(hint);
+        // Also allow clicking anywhere
+        document.addEventListener("click", async function unlockAudio() {
+          if (window.pendingAudio) {
+            try {
+              await window.pendingAudio.play();
+            } catch (err) { }
+            window.pendingAudio = null;
+          }
+          document.querySelector(".audio-hint")?.remove();
+          document.removeEventListener("click", unlockAudio);
+        }, { once: true });
+      }
+    } else {
+      // No audio - just show text with typewriter
+      runTypewriter(data.text, data.text.length * 0.03);
+    }
+  } catch (e) {
+    console.error("Chat API error:", e);
+    append("bot", "An error occurred while processing your request.");
+    holo.setState("idle");
+  }
+}
+
+// Voice Recording
+async function startRecording() {
+  if (recording) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    chunks = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(chunks, { type: "audio/webm" });
+      const formData = new FormData();
+      formData.append("audio", blob, "speech.webm");
+
+      try {
+        const res = await fetch("/api/stt", {
+          method: "POST",
+          headers: { "X-API-Token": localStorage.getItem("k1_api_token") || "" },
+          body: formData
+        });
+        const data = await res.json();
+        if (data.text) {
+          // Update language if detected (only after user is logged in)
+          if (data.language && localStorage.getItem('k1_authenticated') === 'true') {
+            setCurrentLanguage(data.language);
+            console.log(`Detected language from speech: ${data.language}`);
+          }
+          sendText(data.text);
+        }
+      } catch (e) {
+        console.error("STT error:", e);
+        append("bot", "Could not transcribe your speech.");
+      }
+
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start();
+    recording = true;
+    if (micBtn) micBtn.textContent = "â¹ï¸";
+    // Set hologram to listening state - freeze rotation, face user
+    if (holo) holo.setListening(true);
+  } catch (e) {
+    console.error("Microphone error:", e);
+    append("bot", "Microphone permission is required for voice input.");
+  }
+}
+
+function stopRecording() {
+  if (!mediaRecorder || !recording) return;
+  mediaRecorder.stop();
+  recording = false;
+  if (micBtn) micBtn.textContent = "ðŸŽ™ï¸";
+  // Will transition to processing when STT returns
+}
+
+// Pricing
+async function loadPricing() {
+  if (!pricingBox) return;
+  try {
+    const res = await fetch("/api/pricing");
+    const data = await res.json();
+    pricingBox.innerHTML = (data.tiers || []).map(t => `
+      <div class="box" style="border:1px solid var(--border);border-radius:14px;padding:10px;background:rgba(0,0,0,.25)">
+        <div style="font-family:Orbitron;color:var(--cyan)">${t.name} â€“ $${t.price}/${data.currency}</div>
+        <div class="small">${(t.features || []).map(x => `â€¢ ${x}`).join("<br/>")}</div>
+      </div>
+    `).join("");
+  } catch (e) {
+    console.error("Pricing error:", e);
+  }
+}
+
+// ======================================
+// VIEWPORT FIT CHECKER - Ensures single page, no scroll
+// ======================================
+function initViewportFitChecker() {
+  const checkFit = () => {
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    // Set CSS variables for dynamic sizing
+    document.documentElement.style.setProperty('--vh', `${vh * 0.01}px`);
+    document.documentElement.style.setProperty('--vw', `${vw * 0.01}px`);
+
+    // Get main container
+    const mainContainer = document.querySelector('.k1-main-unified');
+    if (mainContainer) {
+      mainContainer.style.height = `${vh}px`;
+      mainContainer.style.maxHeight = `${vh}px`;
+    }
+
+    // Adjust intro content if exists
+    const introContent = document.querySelector('.k1-intro-content');
+    if (introContent) {
+      const maxContentHeight = vh * 0.9; // 90% of viewport
+      const currentHeight = introContent.scrollHeight;
+
+      if (currentHeight > maxContentHeight) {
+        // Scale down content to fit
+        const scale = Math.max(0.6, maxContentHeight / currentHeight);
+        introContent.style.transform = `scale(${scale})`;
+      } else {
+        introContent.style.transform = 'scale(1)';
+      }
+    }
+
+    // Prevent any scrolling
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+  };
+
+  // Run on init
+  checkFit();
+
+  // Run on resize with debounce
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(checkFit, 100);
+  });
+
+  // Run periodically to catch any layout changes
+  setInterval(checkFit, 2000);
+
+  // Also check on orientation change for mobile
+  window.addEventListener('orientationchange', () => {
+    setTimeout(checkFit, 300);
+  });
+}
+
+// ======================================
+// INTRO PAGE - Cinematic Experience
+// ======================================
+
+// Narrator audio element
+let narratorAudio = null;
+
+// Track if narrator is running
+let narratorActive = false;
+let narratorQueue = [];
+
+async function playIntroNarration() {
+  // Prevent multiple calls
+  if (narratorActive) return;
+  narratorActive = true;
+
+  const storyLines = document.querySelectorAll('.k1-story-line');
+  if (!storyLines.length) {
+    narratorActive = false;
+    return;
+  }
+
+  if (!window.speechSynthesis) {
+    console.warn('Speech synthesis not available');
+    narratorActive = false;
+    return;
+  }
+
+  // Hide all lines initially - we'll reveal them one by one
+  storyLines.forEach(line => {
+    line.style.opacity = '0';
+    line.style.transform = 'translateY(20px)';
+    line.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    // Remove CSS animation delay
+    line.style.animation = 'none';
+  });
+
+  // Wait for voices to load
+  const getVoice = () => {
+    const voices = speechSynthesis.getVoices();
+    return voices.find(v =>
+      v.name.includes('David') || v.name.includes('Mark') ||
+      v.name.includes('Daniel') || v.name.includes('Male')
+    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+  };
+
+  // Speak a single line and return a promise
+  const speakLine = (text, voice) => {
+    return new Promise((resolve) => {
+      if (!text.trim()) {
+        resolve();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.85;  // Slower, dramatic
+      utterance.pitch = 0.9;  // Deeper voice
+      utterance.volume = 1.0;
+      if (voice) utterance.voice = voice;
+
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+
+      speechSynthesis.speak(utterance);
+    });
+  };
+
+  // Main narration loop - sync voice with text
+  const narrateWithSync = async () => {
+    console.log('ðŸŽ™ï¸ Starting synchronized narration...');
+    speechSynthesis.cancel(); // Clear any previous
+
+    const voice = getVoice();
+    console.log('Using voice:', voice?.name || 'default');
+
+    for (let i = 0; i < storyLines.length; i++) {
+      if (!narratorActive) break; // Stop if cancelled
+
+      const line = storyLines[i];
+      const text = line.textContent.trim();
+
+      // Show and highlight the current line
+      line.style.opacity = '1';
+      line.style.transform = 'translateY(0)';
+      line.classList.add('k1-speaking');
+
+      // Speak this line and wait for it to finish
+      await speakLine(text, voice);
+
+      // Remove highlight (but keep visible)
+      line.classList.remove('k1-speaking');
+
+      // Small pause between lines
+      if (i < storyLines.length - 1) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    console.log('ðŸŽ™ï¸ Narration complete');
+    narratorActive = false;
+
+    // HIGHLIGHT BUTTON to attract attention
+    const enterBtn = document.getElementById('k1EnterBtn');
+    if (enterBtn) {
+      console.log('Attracting attention to Initialize button...');
+      enterBtn.classList.add('k1-blink-active');
+    }
+  };
+
+  // Wait for voices if needed
+  let voices = speechSynthesis.getVoices();
+  if (voices.length === 0) {
+    await new Promise(resolve => {
+      speechSynthesis.onvoiceschanged = () => {
+        speechSynthesis.onvoiceschanged = null;
+        resolve();
+      };
+      // Fallback timeout
+      setTimeout(resolve, 500);
+    });
+  }
+
+  // Start the synchronized narration
+  narrateWithSync();
+}
+
+// Stop narrator function
+function stopNarrator() {
+  narratorActive = false;
+  if (window.speechSynthesis) {
+    speechSynthesis.cancel();
+  }
+}
+
+function initIntroPage() {
+  const introLayer = document.getElementById('k1IntroLayer');
+  const enterBtn = document.getElementById('k1EnterBtn');
+  const loginLayer = document.getElementById('k1LoginLayer');
+
+  if (!introLayer) {
+    // No intro layer, check if logged in
+    if (isUserLoggedIn()) {
+      initHologramAndApp();
+    } else {
+      showLoginPage();
+    }
+    return;
+  }
+
+  // Create floating particles
+  const particlesContainer = document.getElementById('introParticles');
+  createIntroParticles(particlesContainer);
+
+  // Narrator needs user interaction to play (browser autoplay policy)
+  // Start speaking as soon as user clicks anywhere on intro
+  let narratorStarted = false;
+  const startNarratorOnClick = () => {
+    if (narratorStarted) return;
+    narratorStarted = true;
+    console.log('User clicked - starting narrator...');
+    playIntroNarration();
+    introLayer.removeEventListener('click', startNarratorOnClick);
+  };
+  introLayer.addEventListener('click', startNarratorOnClick);
+
+  // Also try to start immediately (will work if voices are loaded)
+  setTimeout(() => {
+    if (!narratorStarted) {
+      playIntroNarration();
+    }
+  }, 500);
+
+  // Transition function - now goes to LOGIN, not hologram
+  const enterApp = () => {
+    if (introLayer.classList.contains('exiting')) return;
+
+    // Unlock audio context on user gesture (required for autoplay)
+    unlockAudioContext();
+
+    // Start narrator voice NOW (user just clicked, so autoplay is allowed)
+    playIntroNarration();
+
+    // Add exit animation to intro after short delay so user hears narration start
+    setTimeout(() => {
+      introLayer.classList.add('exiting');
+
+      // Wait for exit animation, then show login
+      setTimeout(() => {
+        introLayer.style.display = 'none';
+        // Stop narrator when transitioning
+        stopNarrator();
+
+        // Check if already logged in
+        if (isUserLoggedIn()) {
+          initHologramAndApp();
+        } else {
+          showLoginPage();
+        }
+      }, 1000);
+    }, 100);
+  };
+  // Button click
+  if (enterBtn) {
+    enterBtn.addEventListener('click', enterApp);
+  }
+
+  // Space key trigger
+  const handleKeyOrClick = (e) => {
+    const buttonVisible = enterBtn && window.getComputedStyle(enterBtn).opacity !== '0';
+    if (e.type === 'keydown' && e.code === 'Space' && buttonVisible) {
+      e.preventDefault();
+      enterApp();
+      document.removeEventListener('keydown', handleKeyOrClick);
+    }
+  };
+
+  document.addEventListener('keydown', handleKeyOrClick);
+}
+
+// ======================================
+// LOGIN PAGE LOGIC
+// ======================================
+function isUserLoggedIn() {
+  return sessionStorage.getItem('k1_authenticated') === 'true';
+}
+
+function showLoginPage() {
+  const loginLayer = document.getElementById('k1LoginLayer');
+  if (loginLayer) {
+    loginLayer.style.display = 'flex';
+  }
+  initLoginHandlers();
+}
+
+function initLoginHandlers() {
+  const loginForm = document.getElementById('k1LoginForm');
+  const registerForm = document.getElementById('k1RegisterForm');
+  const showRegisterBtn = document.getElementById('k1ShowRegisterBtn');
+  const backToLoginBtn = document.getElementById('k1BackToLoginBtn');
+  const useDemoBtn = document.getElementById('k1UseDemoBtn');
+  const loginError = document.getElementById('k1LoginError');
+  const demoHint = document.querySelector('.k1-demo-hint');
+  const loginDivider = document.querySelector('.k1-login-divider');
+
+  // Demo button click
+  if (useDemoBtn) {
+    useDemoBtn.addEventListener('click', () => {
+      document.getElementById('loginUsername').value = 'demo';
+      document.getElementById('loginPassword').value = 'demo';
+      // Auto submit
+      loginForm.dispatchEvent(new Event('submit'));
+    });
+  }
+
+  // Toggle to register form
+  if (showRegisterBtn) {
+    showRegisterBtn.addEventListener('click', () => {
+      loginForm.style.display = 'none';
+      if (demoHint) demoHint.style.display = 'none';
+      if (loginDivider) loginDivider.style.display = 'none';
+      showRegisterBtn.style.display = 'none';
+      registerForm.style.display = 'flex';
+      hideLoginError();
+    });
+  }
+
+  // Back to login
+  if (backToLoginBtn) {
+    backToLoginBtn.addEventListener('click', () => {
+      registerForm.style.display = 'none';
+      loginForm.style.display = 'flex';
+      if (demoHint) demoHint.style.display = 'block';
+      if (loginDivider) loginDivider.style.display = 'flex';
+      showRegisterBtn.style.display = 'block';
+      hideLoginError();
+    });
+  }
+
+  // Login form submit
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      if (!username || !password) {
+        showLoginError('Please enter username and password');
+        return;
+      }
+
+      const submitBtn = loginForm.querySelector('.k1-login-btn');
+      submitBtn.classList.add('loading');
+      hideLoginError();
+
+      try {
+        const result = await performLogin(username, password);
+
+        if (result.success) {
+          submitBtn.classList.remove('loading');
+          submitBtn.classList.add('success');
+          submitBtn.querySelector('.k1-btn-text').textContent = 'ACCESS GRANTED';
+
+          // Store auth state in SESSION STORAGE
+          sessionStorage.setItem('k1_authenticated', 'true');
+          sessionStorage.setItem('k1_api_token', result.token || 'temp_token');
+          localStorage.setItem('k1_user', username);
+          localStorage.setItem('k1_user_id', result.userId || username);
+
+          // Load user's saved language preference
+          reloadUserLanguage();
+
+          // Transition to hologram
+          setTimeout(() => {
+            transitionToHologram();
+          }, 800);
+        } else {
+          submitBtn.classList.remove('loading');
+          showLoginError(result.error || 'Authentication failed');
+        }
+      } catch (err) {
+        submitBtn.classList.remove('loading');
+        showLoginError('Connection error. Please try again.');
+        console.error('Login error:', err);
+      }
+    });
+  }
+
+  // Register form submit
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('registerUsername').value.trim();
+      const email = document.getElementById('registerEmail').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      const confirm = document.getElementById('registerConfirm').value;
+
+      if (!username || !password) {
+        showLoginError('Username and password are required');
+        return;
+      }
+
+      if (password !== confirm) {
+        showLoginError('Passwords do not match');
+        return;
+      }
+
+      if (password.length < 4) {
+        showLoginError('Password must be at least 4 characters');
+        return;
+      }
+
+      const submitBtn = registerForm.querySelector('.k1-login-btn');
+      submitBtn.classList.add('loading');
+      hideLoginError();
+
+      try {
+        const result = await performRegister(username, password, email);
+
+        if (result.success) {
+          submitBtn.classList.remove('loading');
+          submitBtn.classList.add('success');
+          submitBtn.querySelector('.k1-btn-text').textContent = 'ACCOUNT CREATED';
+
+          // Store auth state in SESSION STORAGE
+          sessionStorage.setItem('k1_authenticated', 'true');
+          sessionStorage.setItem('k1_api_token', result.token || 'temp_token');
+          localStorage.setItem('k1_user', username);
+          localStorage.setItem('k1_user_id', result.userId || username);
+
+          // Load user's saved language preference (new users will start with English)
+          reloadUserLanguage();
+
+          // Transition to hologram
+          setTimeout(() => {
+            transitionToHologram();
+          }, 800);
+        } else {
+          submitBtn.classList.remove('loading');
+          showLoginError(result.error || 'Registration failed');
+        }
+      } catch (err) {
+        submitBtn.classList.remove('loading');
+        showLoginError('Connection error. Please try again.');
+        console.error('Register error:', err);
+      }
+    });
+  }
+
+  // Forgot Password handler
+  const forgotPasswordBtn = document.getElementById('k1ForgotPasswordBtn');
+  if (forgotPasswordBtn) {
+    forgotPasswordBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      const email = prompt('Enter your email address to reset your password:');
+      if (!email) return;
+
+      if (!email.includes('@')) {
+        alert('Please enter a valid email address');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim() })
+        });
+
+        const data = await res.json();
+        alert(data.message || 'If the email exists, a reset link will be sent.');
+      } catch (err) {
+        alert('Failed to send reset email. Please try again later.');
+        console.error('Forgot password error:', err);
+      }
+    });
+  }
+
+  // Create particles for login page
+  const loginParticles = document.getElementById('loginParticles');
+  if (loginParticles) {
+    createIntroParticles(loginParticles);
+  }
+}
+
+async function performLogin(username, password) {
+  // Demo user check (predefined)
+  if (username === 'demo' && password === 'demo') {
+    // Still call backend to register the session
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'demo', user: username, password: password })
+      });
+      const data = await res.json();
+      return { success: true, userId: data.userId || 'demo' };
+    } catch {
+      // Even if backend fails, allow demo login
+      return { success: true, userId: 'demo' };
+    }
+  }
+
+  // Regular login via backend
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: username, user: username, password: password })
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      return { success: false, error: data.error || 'Invalid credentials' };
+    }
+
+    const data = await res.json();
+
+    // Antigravity Fix: Auto-save admin token if provided
+    if (data.adminToken) {
+      localStorage.setItem('k1_admin_token', data.adminToken);
+      console.log('âœ… Admin token auto-configured');
+    }
+
+    return { success: true, userId: data.userId || username, token: data.token };
+  } catch (err) {
+    console.error('Login API error:', err);
+    return { success: false, error: 'Server connection failed' };
+  }
+}
+
+async function performRegister(username, password, email) {
+  try {
+    // Use dedicated register endpoint with password hashing
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+        email: email
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.status === 201 || data.ok) {
+      return { success: true, userId: data.userId || username, token: data.token };
+    }
+
+    return { success: false, error: data.error || 'Registration failed' };
+  } catch (err) {
+    console.error('Register API error:', err);
+    return { success: false, error: 'Server connection failed' };
+  }
+}
+
+
+function showLoginError(message) {
+  const errorEl = document.getElementById('k1LoginError');
+  if (errorEl) {
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+  }
+}
+
+function hideLoginError() {
+  const errorEl = document.getElementById('k1LoginError');
+  if (errorEl) {
+    errorEl.style.display = 'none';
+  }
+}
+
+function transitionToHologram() {
+  const loginLayer = document.getElementById('k1LoginLayer');
+  const hologramMount = document.getElementById('hologramMount');
+  const mainUI = document.getElementById('k1MainUI');
+
+  if (loginLayer) {
+    loginLayer.classList.add('exiting');
+  }
+
+  // Initialize hologram
+  setTimeout(() => {
+    initHologram();
+  }, 200);
+
+  // Reveal hologram
+  setTimeout(() => {
+    if (hologramMount) {
+      hologramMount.style.opacity = '1';
+      hologramMount.style.visibility = 'visible';
+      hologramMount.classList.add('revealing');
+    }
+    setTimeout(() => {
+      if (holo) holo.resize();
+    }, 100);
+  }, 400);
+
+  // Reveal UI
+  setTimeout(() => {
+    if (mainUI) {
+      mainUI.style.opacity = '1';
+      mainUI.style.pointerEvents = 'auto';
+      mainUI.classList.add('revealing');
+    }
+  }, 600);
+
+  // Hide login and init main app
+  setTimeout(() => {
+    if (loginLayer) loginLayer.style.display = 'none';
+    if (holo) holo.resize();
+    initMainApp();
+  }, 1200);
+}
+
+function initHologramAndApp() {
+  const hologramMount = document.getElementById('hologramMount');
+  const mainUI = document.getElementById('k1MainUI');
+
+  // Initialize hologram directly
+  initHologram();
+
+  if (hologramMount) {
+    hologramMount.style.opacity = '1';
+    hologramMount.style.visibility = 'visible';
+    hologramMount.classList.add('revealing');
+  }
+
+  if (mainUI) {
+    mainUI.style.opacity = '1';
+    mainUI.style.pointerEvents = 'auto';
+    mainUI.classList.add('revealing');
+  }
+
+  setTimeout(() => {
+    if (holo) holo.resize();
+    initMainApp();
+  }, 500);
+}
+
+function createIntroParticles(container) {
+  if (!container) return;
+
+  const particleCount = 25;
+
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'k1-particle';
+
+    // Random position and timing
+    particle.style.left = `${Math.random() * 100}%`;
+    particle.style.animationDelay = `${Math.random() * 8}s`;
+    particle.style.animationDuration = `${6 + Math.random() * 6}s`;
+
+    // Random size variation
+    const size = 2 + Math.random() * 4;
+    particle.style.width = `${size}px`;
+    particle.style.height = `${size}px`;
+
+    // Random color variation (cyan to purple spectrum)
+    const hue = 180 + Math.random() * 60; // 180-240 (cyan to purple)
+    particle.style.background = `hsla(${hue}, 100%, 70%, 0.7)`;
+    particle.style.boxShadow = `0 0 ${size * 3}px hsla(${hue}, 100%, 60%, 0.8)`;
+
+    container.appendChild(particle);
+  }
+}
+
+// ======================================
+// MAIN APP INITIALIZATION
+// ======================================
+function initMainApp() {
+  initStatusBar();
+  initTabs();
+
+  // Bind send button
+  const sendBtnEl = document.getElementById("btnSend");
+  const micBtnEl = document.getElementById("btnMic");
+  const textInputEl = document.getElementById("textInput");
+
+  if (sendBtnEl) {
+    sendBtnEl.onclick = () => sendText(textInputEl ? textInputEl.value : "");
+  }
+
+  if (textInputEl) {
+    textInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendText(textInputEl.value);
+      }
+    });
+
+    // Set hologram to listening when user starts typing
+    textInputEl.addEventListener("focus", () => {
+      if (holo) holo.setListening(true);
+    });
+
+    textInputEl.addEventListener("input", () => {
+      if (holo) holo.setListening(true);
+    });
+
+    // Stop listening when user leaves the input (blur) and input is empty
+    textInputEl.addEventListener("blur", () => {
+      if (holo && !textInputEl.value.trim()) {
+        holo.setListening(false);
+      }
+    });
+  }
+
+  if (micBtnEl) {
+    micBtnEl.onclick = () => {
+      if (!recording) startRecording();
+      else stopRecording();
+    };
+  }
+
+  // Auto login and welcome message with TTS
+  setTimeout(async () => {
+    await login();
+
+    // Get username for personalized greeting
+    // Get username for personalized greeting
+    const username = localStorage.getItem('k1_user') || 'user';
+    const lang = getCurrentUserLanguage();
+
+    // Select greeting based on language
+    const greetings = {
+      'en': `Welcome back, ${username}! I am K, your neural assistant. How can I help you?`,
+      'ro': `Bine ai venit, ${username}! Eu sunt K, asistentul tÄƒu virtual. Cu ce te pot ajuta astÄƒzi?`,
+      'default': `Welcome back, ${username}! I am K. Systems online.`
+    };
+
+    // For demo/new users, generic welcome
+    const genericGreetings = {
+      'en': "Hello! I am K, your virtual assistant. How can I help you today?",
+      'ro': "BunÄƒ! Eu sunt K, asistentul tÄƒu virtual. Cu ce te pot ajuta astÄƒzi?",
+      'default': "Hello! I am K."
+    };
+
+    const isGeneric = (!username || username === 'demo' || username === 'user');
+    const welcomeMessage = isGeneric
+      ? (genericGreetings[lang] || genericGreetings['en'])
+      : (greetings[lang] || greetings['en']);
+
+    append("bot", welcomeMessage);
+
+    // Speak the welcome message with hologram animation
+    speakWithBrowserTTS(
+      welcomeMessage,
+      () => {
+        // On start - set hologram to speaking
+        if (holo) holo.setState("speak");
+        runTypewriter(welcomeMessage, welcomeMessage.length * 0.06);
+      },
+      () => {
+        // On end - stop speaking animation
+        if (holo) {
+          holo.resetMouth();
+          holo.setState("idle");
+        }
+      }
+    );
+  }, 800);
+
+  // Inactivity timer - check every 30 seconds, return to idle after 2 minutes
+  // When timeout reached, announce politely that robot is still available
+  setInterval(() => {
+    if (holo && holo.checkInactivityTimeout()) {
+      // Reset activity time to prevent repeated announcements
+      holo.lastActivityTime = Date.now();
+
+      // Robot announces it's going to standby but remains available
+      const idleMessages = [
+        "I'll be right here if you need anything.",
+        "Take your time. I'm here whenever you're ready.",
+        "I'm at your service. Just speak or type when you need me.",
+        "Standing by. Feel free to reach out anytime."
+      ];
+      const message = idleMessages[Math.floor(Math.random() * idleMessages.length)];
+
+      // Speak the message
+      append("bot", message);
+      speakWithBrowserTTS(
+        message,
+        () => { if (holo) holo.setState("speak"); },
+        () => {
+          if (holo) {
+            holo.resetMouth();
+            holo.setState("idle");
+          }
+        }
+      );
+    }
+  }, 30000);
+
+  loadPricing();
+}
+
+// ======================================
+// DOM READY - Bootstrap Everything
+// ======================================
+document.addEventListener("DOMContentLoaded", () => {
+  // Initialize viewport fit checker first (prevents scroll)
+  initViewportFitChecker();
+
+  // Initialize intro page (handles transition to main app)
+  initIntroPage();
+
+  // Initialize hologram early (it animates in background behind intro)
+  // The hologram is hidden initially but rendering
+});
+ 
+ / /   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
+ / /   A U T O - L O G O U T   O N   E X I T   ( S E C U R I T Y )  
+ / /   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
+ w i n d o w . a d d E v e n t L i s t e n e r ( ' b e f o r e u n l o a d ' ,   f u n c t i o n   ( )   {  
+         / /   U s e r   r e q u e s t e d   a u t o m a t i c   l o g o u t   o n   f o r c e d   e x i t   ( t a b   c l o s e )  
+         c o n s o l e . l o g ( ' ð x    S e c u r e   E x i t :   C l e a r i n g   s e s s i o n   d a t a . . . ' ) ;  
+  
+         / /   1 .   C l e a r   a c t i v e   s e s s i o n   f l a g s  
+         s e s s i o n S t o r a g e . r e m o v e I t e m ( ' k 1 _ a u t h e n t i c a t e d ' ) ;  
+         s e s s i o n S t o r a g e . r e m o v e I t e m ( ' k 1 _ a p i _ t o k e n ' ) ;  
+  
+         / /   2 .   C l e a r   A d m i n   T o k e n   t o   f o r c e   r e - a u t h   n e x t   t i m e   ( S e c u r i t y )  
+         l o c a l S t o r a g e . r e m o v e I t e m ( ' k 1 _ a d m i n _ t o k e n ' ) ;  
+  
+         / /   3 .   N o t i f y   b a c k e n d   o f   d i s c o n n e c t   ( B e s t   e f f o r t )  
+         t r y   {  
+                 c o n s t   u s e r I d   =   l o c a l S t o r a g e . g e t I t e m ( ' k 1 _ u s e r _ i d ' ) ;  
+                 i f   ( u s e r I d )   {  
+                         c o n s t   d a t a   =   J S O N . s t r i n g i f y ( {   u s e r I d :   u s e r I d ,   e v e n t :   ' f o r c e d _ l o g o u t '   } ) ;  
+                         n a v i g a t o r . s e n d B e a c o n ( ' / a p i / l o g o u t - b e a c o n ' ,   d a t a ) ;  
+                 }  
+         }   c a t c h   ( e )   {  
+                 / /   I g n o r e   e r r o r s   o n   e x i t  
+         }  
+ } ) ;  
+ 
