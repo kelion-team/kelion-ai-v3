@@ -434,19 +434,14 @@ function showLoginPage() {
 }
 
 function initLoginHandlers() {
-    const step0 = $('authStep0');
-    const step1 = $('authStep1');
-    const step2 = $('authStep2');
-    const step3 = $('authStep3');
+    // Tab Navigation
+    const tabSignIn = $('tabSignIn');
+    const tabCreateAccount = $('tabCreateAccount');
+    const contentSignIn = $('contentSignIn');
+    const contentCreateAccount = $('contentCreateAccount');
 
-    const chooseDemoBtn = $('k1ChooseDemo');
-    const chooseAccountBtn = $('k1ChooseAccount');
-    const loginExistingBtn = $('k1LoginExisting');
     const loginForm = $('k1LoginForm');
     const registerForm = $('k1RegisterForm');
-    const backToStep0Login = $('backToStep0Login');
-    const backToStep0Register = $('backToStep0Register');
-    const backToStep0Verify = $('backToStep0Verify');
     const toggleLoginPassword = $('toggleLoginPassword');
     const resendEmailBtn = $('k1ResendEmail');
     const registerLanguage = $('registerLanguage');
@@ -472,40 +467,31 @@ function initLoginHandlers() {
         'ja': '日本語が選択されました。ようこそ！'
     };
 
-    // Helper to switch steps
-    function goToStep(stepNum) {
-        [step0, step1, step2, step3].forEach(s => s && s.classList.remove('active'));
-        if (stepNum === 0 && step0) step0.classList.add('active');
-        if (stepNum === 1 && step1) step1.classList.add('active');
-        if (stepNum === 2 && step2) step2.classList.add('active');
-        if (stepNum === 3 && step3) step3.classList.add('active');
+    // Tab switching function
+    function switchTab(tabName) {
+        // Update tabs
+        if (tabSignIn) tabSignIn.classList.toggle('active', tabName === 'signin');
+        if (tabCreateAccount) tabCreateAccount.classList.toggle('active', tabName === 'create');
+
+        // Update content
+        if (contentSignIn) contentSignIn.classList.toggle('active', tabName === 'signin');
+        if (contentCreateAccount) contentCreateAccount.classList.toggle('active', tabName === 'create');
+
         hideError();
     }
 
-    // STEP 0: Demo button - quick access
-    if (chooseDemoBtn) {
-        chooseDemoBtn.onclick = () => {
-            sessionStorage.setItem('k1_authenticated', 'true');
-            localStorage.setItem('k1_user', 'demo');
-            currentLanguage = 'en';
-            transitionToHologram();
-        };
-    }
-
-    // STEP 0: Create Account button
-    if (chooseAccountBtn) {
-        chooseAccountBtn.onclick = () => {
-            goToStep(2);
-            setTimeout(() => $('registerUsername') && $('registerUsername').focus(), 100);
-        };
-    }
-
-    // STEP 0: Login existing user link
-    if (loginExistingBtn) {
-        loginExistingBtn.onclick = (e) => {
-            e.preventDefault();
-            goToStep(1);
+    // Tab click handlers
+    if (tabSignIn) {
+        tabSignIn.onclick = () => {
+            switchTab('signin');
             setTimeout(() => $('loginUsername') && $('loginUsername').focus(), 100);
+        };
+    }
+
+    if (tabCreateAccount) {
+        tabCreateAccount.onclick = () => {
+            switchTab('create');
+            setTimeout(() => $('registerUsername') && $('registerUsername').focus(), 100);
         };
     }
 

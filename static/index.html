@@ -91,71 +91,41 @@
             <p class="k1-login-subtitle">Neural Interface Access</p>
           </div>
 
-          <!-- STEP-BASED AUTH FLOW -->
+          <!-- TAB-BASED AUTH FLOW -->
           <div class="k1-auth-flow">
 
-            <!-- STEP 0: Choose Demo or Account -->
-            <div class="k1-auth-step active" id="authStep0">
-              <div class="k1-choice-title">How would you like to access?</div>
-
-              <button id="k1ChooseDemo" class="k1-choice-btn k1-choice-demo">
-                <span class="k1-choice-icon">⚡</span>
-                <span class="k1-choice-text">
-                  <strong>Demo Access</strong>
-                  <small>Quick trial • 30 min/day • No registration</small>
-                </span>
-              </button>
-
-              <div class="k1-choice-divider"><span>OR</span></div>
-
-              <button id="k1ChooseAccount" class="k1-choice-btn k1-choice-account">
-                <span class="k1-choice-icon">🔐</span>
-                <span class="k1-choice-text">
-                  <strong>Create Account</strong>
-                  <small>Full access • Save progress • Email required</small>
-                </span>
-              </button>
-
-              <div class="k1-existing-user">
-                Already have an account? <a href="#" id="k1LoginExisting">Sign in</a>
-              </div>
+            <!-- TAB NAVIGATION -->
+            <div class="k1-auth-tabs">
+              <button class="k1-tab active" id="tabSignIn">Sign In</button>
+              <button class="k1-tab" id="tabCreateAccount">Create Account</button>
             </div>
 
-            <!-- STEP 1: Login (existing user) -->
-            <div class="k1-auth-step" id="authStep1">
-              <div class="k1-step-header">
-                <span class="k1-step-icon">👤</span>
-                <span>Sign in to your account</span>
-              </div>
+            <!-- TAB 1: Sign In -->
+            <div class="k1-tab-content active" id="contentSignIn">
               <form id="k1LoginForm" class="k1-login-form">
                 <div class="k1-form-group">
                   <label for="loginUsername">USERNAME OR EMAIL</label>
                   <input type="text" id="loginUsername" placeholder="Enter username or email" autocomplete="username"
                     required>
                 </div>
-                <div class="k1-form-group">
+                <div class="k1-form-group k1-password-group">
                   <label for="loginPassword">PASSWORD</label>
                   <input type="password" id="loginPassword" placeholder="Enter password" autocomplete="current-password"
                     required>
-                  <button type="button" class="k1-show-password" id="toggleLoginPassword">👁</button>
+                  <button type="button" class="k1-toggle-password" id="toggleLoginPassword">👁</button>
                 </div>
-                <button type="submit" class="k1-login-btn">
-                  <span class="k1-btn-glow"></span>
+                <button type="submit" class="k1-submit-btn">
                   <span class="k1-btn-text">SIGN IN</span>
+                  <span class="k1-btn-loader"></span>
                 </button>
                 <div class="k1-forgot-password">
                   <a href="#" id="k1ForgotPasswordBtn">Forgot password?</a>
                 </div>
               </form>
-              <button type="button" class="k1-back-btn" id="backToStep0Login">← Back</button>
             </div>
 
-            <!-- STEP 2: Registration Form -->
-            <div class="k1-auth-step" id="authStep2">
-              <div class="k1-step-header">
-                <span class="k1-step-icon">✨</span>
-                <span>Create your account</span>
-              </div>
+            <!-- TAB 2: Create Account (Demo/User same form) -->
+            <div class="k1-tab-content" id="contentCreateAccount">
 
               <!-- Demo/User Toggle Switch -->
               <div class="k1-account-toggle">
@@ -193,7 +163,7 @@
                 <div class="k1-form-group">
                   <label for="registerLanguage">PREFERRED LANGUAGE</label>
                   <input type="text" id="registerLanguage" list="languageList" class="k1-input"
-                    placeholder="Type to search (e.g. 'ro' for Română)" autocomplete="off">
+                    placeholder="Default: English" value="en" autocomplete="off">
                   <datalist id="languageList">
                     <option value="en">🇬🇧 English</option>
                     <option value="ro">🇷🇴 Română</option>
@@ -216,12 +186,11 @@
                   <span class="k1-notice-icon">🧪</span>
                   <span>All accounts are in testing period. You'll get full access soon!</span>
                 </div>
-                <button type="submit" class="k1-login-btn k1-register-btn">
-                  <span class="k1-btn-glow"></span>
+                <button type="submit" class="k1-submit-btn">
                   <span class="k1-btn-text">CREATE ACCOUNT</span>
+                  <span class="k1-btn-loader"></span>
                 </button>
               </form>
-              <button type="button" class="k1-back-btn" id="backToStep0Register">← Back</button>
             </div>
 
             <!-- STEP 3: Email Verification Sent -->
