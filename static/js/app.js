@@ -712,20 +712,29 @@ function initMainApp() {
     initStatusBar();
     currentLanguage = getCurrentUserLanguage();
     const sendBtn = $("btnSend");
-    const micBtn = $("btnMic");
     const textInput = $("textInput");
-    const contactBtn = $("k1ContactBtn");
+    const toggleChatBtn = $("btnToggleChat");
+    const chatWrapper = $("chatInputWrapper");
     const authBtn = $("k1AuthBtn");
     const dash = $("k1Dashboard");
     const closeDash = $("k1CloseDash");
+
+    // Toggle Chat Button - show/hide input
+    let chatOpen = false;
+    if (toggleChatBtn && chatWrapper) {
+        toggleChatBtn.onclick = () => {
+            chatOpen = !chatOpen;
+            chatWrapper.style.display = chatOpen ? 'flex' : 'none';
+            toggleChatBtn.classList.toggle('active', chatOpen);
+            if (chatOpen && textInput) textInput.focus();
+        };
+    }
 
     if (sendBtn) sendBtn.onclick = () => sendText(textInput ? textInput.value : "");
     if (textInput) {
         textInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(textInput.value); } };
         textInput.onfocus = () => { if (holo) holo.setListening(true); };
     }
-    if (micBtn) micBtn.onclick = () => { if (!recording) startRecording(); else stopRecording(); };
-    if (contactBtn) contactBtn.onclick = () => { window.location.href = "mailto:contact@kelionai.app?subject=KELION%20AI%20Inquiry"; };
     if (closeDash) closeDash.onclick = () => { dash.style.display = 'none'; };
 
     if (authBtn) {

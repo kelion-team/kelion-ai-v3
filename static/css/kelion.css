@@ -919,6 +919,70 @@ textarea {
   font-family: "Orbitron";
 }
 
+/* Toggle Chat Button */
+.k1-input-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.k1-toggle-chat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(0, 15, 30, 0.8);
+  border: 2px solid rgba(0, 243, 255, 0.5);
+  border-radius: 50px;
+  color: #00f3ff;
+  cursor: pointer;
+  font-family: "Orbitron";
+  font-size: 12px;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
+}
+
+.k1-toggle-chat:hover {
+  background: rgba(0, 243, 255, 0.15);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+}
+
+.k1-toggle-chat.active {
+  background: rgba(0, 243, 255, 0.25);
+  border-color: #00f3ff;
+  box-shadow: 0 0 30px rgba(0, 243, 255, 0.6);
+}
+
+.k1-toggle-icon {
+  font-size: 18px;
+}
+
+.k1-chat-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 15, 30, 0.9);
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  backdrop-filter: blur(10px);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* Text Input Bar */
 .k1-text-bar {
   pointer-events: auto;

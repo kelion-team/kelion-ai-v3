@@ -203,17 +203,19 @@
       <!-- Active Subtitle -->
       <div id="k1Subtitle" class="k1-subtitle-layer"></div>
 
-      <!-- Input Controls -->
+      <!-- Input Controls - Simplified -->
       <div class="k1-input-layer">
-        <div class="k1-ptt-wrapper">
-          <button id="btnMic" class="k1-ptt-btn">
-            <div class="k1-ptt-icon">🎙️</div>
-            <div class="k1-ptt-label">PUSH TO TALK</div>
+        <div class="k1-input-row">
+          <!-- Toggle Chat Button -->
+          <button id="btnToggleChat" class="k1-toggle-chat" title="Toggle Chat">
+            <span class="k1-toggle-icon">💬</span>
+            <span class="k1-toggle-label">CHAT</span>
           </button>
-        </div>
-        <div class="k1-text-bar">
-          <textarea id="textInput" class="k1-chat-input" placeholder="Or type your message..."></textarea>
-          <button id="btnSend" class="k1-action-btn">SEND</button>
+          <!-- Collapsible Input (hidden by default) -->
+          <div id="chatInputWrapper" class="k1-chat-wrapper" style="display: none;">
+            <textarea id="textInput" class="k1-chat-input" placeholder="Type your message..."></textarea>
+            <button id="btnSend" class="k1-action-btn">SEND</button>
+          </div>
         </div>
       </div>
 
