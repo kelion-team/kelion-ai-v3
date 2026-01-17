@@ -398,6 +398,7 @@ function initLoginHandlers() {
             const username = $('registerUsername').value.trim() || currentUsername;
             const email = $('registerEmail').value.trim();
             const password = $('registerPassword').value;
+            const language = $('registerLanguage') ? $('registerLanguage').value : 'en';
 
             if (!password || password.length < 4) { showError('Password must be at least 4 characters'); return; }
 
@@ -405,12 +406,14 @@ function initLoginHandlers() {
                 const res = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, email })
+                    body: JSON.stringify({ username, password, email, language })
                 });
                 const data = await res.json();
                 if (res.ok) {
                     sessionStorage.setItem('k1_authenticated', 'true');
                     localStorage.setItem('k1_user', username);
+                    // Save language preference
+                    setCurrentLanguage(language);
                     transitionToHologram();
                 } else { showError(data.error || 'Registration failed'); }
             } catch (e) { showError('Connection error'); }
