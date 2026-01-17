@@ -503,6 +503,17 @@
     });
   </script>
 
+  <!-- Auto Visitor Tracking -->
+  <script>
+    (function () {
+      fetch('/api/track-visitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: window.location.pathname })
+      }).catch(() => { });
+    })();
+  </script>
+
   <!-- Scripts -->
   <script type="module" src="/js/app.js"></script>
   <script src="/js/admin.js"></script>
