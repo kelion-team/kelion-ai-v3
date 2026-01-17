@@ -576,18 +576,27 @@ export class HologramUnit {
     }
 
     // Map backend animation states to available model animations
-    // Backend can send: idle, speak, happy, empathetic, listening, processing
+    // Extended with realistic emotion states
     const animationMap = {
       idle: ["idle", "blink", "breath", "default"],
-      speak: ["speak", "talk", "speaking", "idle"],  // Fallback to idle if no speak anim
+      speak: ["speak", "talk", "speaking", "idle"],
       happy: ["smile", "happy", "joy", "idle"],
+      laughing: ["laugh", "smile", "happy", "idle"],
       empathetic: ["sad", "empathetic", "concern", "idle"],
-      listening: ["listen", "idle"],  // Head tilt logic handled in updateProcedural
-      processing: ["thinking", "idle"] // Pulse logic handled in updateProcedural
+      crying: ["cry", "sad", "tear", "empathetic", "idle"],
+      surprised: ["surprise", "shock", "amazed", "idle"],
+      angry: ["angry", "mad", "frown", "idle"],
+      thinking: ["think", "ponder", "idle"],
+      listening: ["listen", "idle"],
+      processing: ["thinking", "idle"]
     };
 
+    // Apply realistic morph targets for emotions
+    this._applyEmotionMorphs(state, emotion);
+
     // Auto-focus when speaking or showing emotion
-    if (state === 'speak' || state === 'happy' || state === 'empathetic') {
+    if (state === 'speak' || state === 'happy' || state === 'empathetic' ||
+      state === 'laughing' || state === 'crying' || state === 'surprised' || state === 'angry') {
       this.setFocus(true);
       this.params.isSpeaking = (state === 'speak');
       this.params.isListening = false;
@@ -603,7 +612,7 @@ export class HologramUnit {
       this.params.isSpeaking = false;
       this.params.isListening = false;
       setTimeout(() => this.setFocus(false), 2000);
-    } else if (state === 'processing') {
+    } else if (state === 'processing' || state === 'thinking') {
       // Keep focus during processing
       this.setFocus(true);
       this.params.isListening = false;
@@ -615,6 +624,78 @@ export class HologramUnit {
     const animName = this._findFirstAction(candidates);
     if (animName) {
       this.play(animName);
+    }
+  }
+
+  // Apply realistic morph blends for different emotions
+  _applyEmotionMorphs(state, emotion) {
+    if (!this.mesh || !this.mesh.morphTargetDictionary) return;
+
+    const dict = this.mesh.morphTargetDictionary;
+    const morphs = this.mesh.morphTargetInfluences;
+
+    // Smoothing factor for natural transitions
+    const blend = 0.15;
+
+    // Define emotion morph configurations (realistic expressions)
+    const emotionMorphs = {
+      happy: {
+        'browInnerUp': 0.2,
+        'cheekSquintLeft': 0.4, 'cheekSquintRight': 0.4,
+        'mouthSmileLeft': 0.6, 'mouthSmileRight': 0.6,
+        'eyeSquintLeft': 0.2, 'eyeSquintRight': 0.2
+      },
+      laughing: {
+        'browInnerUp': 0.3,
+        'cheekSquintLeft': 0.7, 'cheekSquintRight': 0.7,
+        'mouthSmileLeft': 0.9, 'mouthSmileRight': 0.9,
+        'mouthOpen': 0.4, 'jawOpen': 0.3,
+        'eyeSquintLeft': 0.5, 'eyeSquintRight': 0.5
+      },
+      crying: {
+        'browInnerUp': 0.6,
+        'browOuterUpLeft': -0.3, 'browOuterUpRight': -0.3,
+        'eyeSquintLeft': 0.4, 'eyeSquintRight': 0.4,
+        'mouthFrownLeft': 0.5, 'mouthFrownRight': 0.5,
+        'mouthPucker': 0.2, 'jawOpen': 0.1
+      },
+      surprised: {
+        'browInnerUp': 0.8, 'browOuterUpLeft': 0.6, 'browOuterUpRight': 0.6,
+        'eyeWideLeft': 0.7, 'eyeWideRight': 0.7,
+        'jawOpen': 0.4, 'mouthOpen': 0.3
+      },
+      angry: {
+        'browDownLeft': 0.7, 'browDownRight': 0.7,
+        'noseSneerLeft': 0.4, 'noseSneerRight': 0.4,
+        'jawForward': 0.3,
+        'mouthFrownLeft': 0.3, 'mouthFrownRight': 0.3
+      },
+      thinking: {
+        'browInnerUp': 0.3,
+        'eyeLookUpLeft': 0.4, 'eyeLookUpRight': 0.4,
+        'mouthPucker': 0.15
+      },
+      empathetic: {
+        'browInnerUp': 0.4,
+        'mouthFrownLeft': 0.2, 'mouthFrownRight': 0.2,
+        'eyeSquintLeft': 0.15, 'eyeSquintRight': 0.15
+      },
+      idle: {} // Reset to neutral
+    };
+
+    const targetMorphs = emotionMorphs[state] || emotionMorphs[emotion] || emotionMorphs.idle;
+
+    // Collect all possible emotion morph keys
+    const emotionKeys = new Set();
+    Object.values(emotionMorphs).forEach(e => Object.keys(e).forEach(k => emotionKeys.add(k)));
+
+    // Smoothly blend toward target values
+    for (const key of emotionKeys) {
+      if (dict[key] !== undefined) {
+        const idx = dict[key];
+        const target = targetMorphs[key] || 0;
+        morphs[idx] = morphs[idx] + (target - morphs[idx]) * blend;
+      }
     }
   }
 
