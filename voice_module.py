@@ -21,7 +21,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
 
 # TTS Configuration
-TTS_PROVIDER = os.getenv("TTS_PROVIDER", "deepgram")  # browser, openai, elevenlabs, deepgram
+TTS_PROVIDER = os.getenv("TTS_PROVIDER", "openai")  # browser, openai, elevenlabs, deepgram
 OPENAI_TTS_VOICE = os.getenv("OPENAI_TTS_VOICE", "onyx")  # Male voice
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "")
 DEEPGRAM_VOICE = os.getenv("DEEPGRAM_VOICE", "aura-orion-en")  # MASCULINE voice (deep male)
@@ -97,7 +97,7 @@ class VoiceAuthority:
                 "lang": "ro-RO",
                 "rate": 1.0,
                 "pitch": 0.9,
-                "voice_name": "Google română" if "ro" in voice.lower() else voice
+                "voice_name": voice  # Male voices preferred
             }
         }
     

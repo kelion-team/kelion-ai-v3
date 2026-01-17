@@ -4689,3 +4689,42 @@ textarea {
 .k1-gender-icon {
   font-size: 1.2rem;
 }
+
+/* Compact Registration Form - Make CREATE ACCOUNT visible */
+.k1-tab-content {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.k1-form-group {
+  margin-bottom: 12px !important;
+}
+
+.k1-form-group label {
+  font-size: 0.7rem !important;
+  margin-bottom: 4px !important;
+}
+
+.k1-form-group input {
+  padding: 10px 12px !important;
+  font-size: 0.9rem !important;
+}
+
+.k1-account-toggle {
+  margin: 10px 0 8px !important;
+}
+
+.k1-submit-btn {
+  margin-top: 10px !important;
+  padding: 12px !important;
+}
+
+.k1-testing-notice {
+  margin: 8px 0 !important;
+  font-size: 0.75rem !important;
+  padding: 6px !important;
+}
+
+.k1-checkbox-group {
+  margin: 8px 0 !important;
+}
