@@ -75,15 +75,29 @@ function speakWithBrowserTTS(text, onStart, onEnd) {
     if (!speechSynthesis) { if (onEnd) onEnd(); return; }
     speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
-    // Use saved voice settings or defaults
     utt.rate = window.k1VoiceSpeed || 0.95;
     utt.pitch = 1.0;
     utt.volume = window.k1VoiceVolume || 1.0;
     const voices = speechSynthesis.getVoices();
+
+    // Female voices to EXCLUDE
+    const femaleVoices = ['ioana', 'samantha', 'anna', 'amélie', 'monica', 'alice', 'luciana', 'joana', 'milena', 'ting-ting', 'lili', 'kyoko', 'ayumi', 'huihui', 'google română'];
+
     const prefs = VOICE_PREFS[currentLanguage] || VOICE_PREFS['default'];
     let voice = null;
     for (const p of prefs) { voice = voices.find(v => v.name.includes(p)); if (voice) break; }
-    if (!voice) voice = voices.find(v => v.lang.startsWith(currentLanguage)) || voices.find(v => v.lang.startsWith('en'));
+
+    // Fallback: find voice by language but EXCLUDE female voices
+    if (!voice) {
+        voice = voices.find(v =>
+            v.lang.startsWith(currentLanguage) &&
+            !femaleVoices.some(f => v.name.toLowerCase().includes(f))
+        );
+    }
+    // Last resort: English male
+    if (!voice) voice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('david'));
+    if (!voice) voice = voices.find(v => v.lang.startsWith('en'));
+
     if (voice) utt.voice = voice;
     utt.onstart = () => { if (onStart) onStart(); };
     utt.onend = () => { if (onEnd) onEnd(); };
