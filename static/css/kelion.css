@@ -1,3 +1,4 @@
+r pe git?
 :root {
   --cyan: #00f3ff;
   --pink: #ff00ff;
@@ -5,7 +6,7 @@
   --panel: rgba(0, 15, 30, 0.95);
   --border: rgba(0, 243, 255, 0.35);
   --glow: 0 0 20px rgba(0, 243, 255, 0.25);
-  --text: #d7feff;
+  --text: #d7feff;f
   --muted: #7fdde0;
   --danger: #ff4d6d;
 }
