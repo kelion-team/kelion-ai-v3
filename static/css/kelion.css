@@ -4650,3 +4650,42 @@ textarea {
     transform: translateY(0);
   }
 }
+
+/* Voice Gender Selection */
+.k1-voice-gender {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.k1-gender-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+}
+
+.k1-gender-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.k1-gender-option input[type="radio"] {
+  display: none;
+}
+
+.k1-gender-option:has(input:checked) {
+  background: rgba(0, 243, 255, 0.15);
+  border-color: var(--cyan);
+}
+
+.k1-gender-icon {
+  font-size: 1.2rem;
+}
