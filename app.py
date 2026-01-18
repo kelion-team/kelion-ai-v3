@@ -1142,16 +1142,16 @@ def api_check_user():
     
     # Check database for user
     if USE_POSTGRES:
-        with get_pg_conn() as conn:
+        with get_pg_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT id FROM users WHERE LOWER(id) = %s", (username,))
+                cur.execute("SELECT user_id FROM users WHERE LOWER(user_id) = %s", (username,))
                 row = cur.fetchone()
                 exists = row is not None
     else:
-        conn = get_db()
-        cur = conn.execute("SELECT id FROM users WHERE LOWER(id) = ?", (username,))
-        row = cur.fetchone()
-        exists = row is not None
+        with db() as conn:
+            cur = conn.execute("SELECT user_id FROM users WHERE LOWER(user_id) = ?", (username,))
+            row = cur.fetchone()
+            exists = row is not None
     
     return jsonify({"exists": exists, "username": username})
 
@@ -1169,17 +1169,19 @@ def api_login():
     # Admin has full rights - no limits
     if username.lower() in ["admin", "adrian", "enciulescu"]:
         # Verify password for admin accounts
-        if USE_POSTGRES:
-            with get_pg_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT password_hash FROM users WHERE LOWER(id) = %s", (username.lower(),))
-                    row = cur.fetchone()
-        else:
-            conn = get_db()
-            cur = conn.execute("SELECT password_hash FROM users WHERE LOWER(id) = ?", (username.lower(),))
-            row = cur.fetchone()
+        # Get password hash from profile_json
+        with db() as conn:
+            row = conn.execute("SELECT profile_json FROM users WHERE LOWER(user_id) = ?", (username.lower(),)).fetchone()
         
-        if row and row[0] and verify_password(password, row[0]):
+        stored_hash = None
+        if row:
+            try:
+                profile = json.loads(row["profile_json"])
+                stored_hash = profile.get("password_hash")
+            except:
+                pass
+        
+        if stored_hash and verify_password(password, stored_hash):
             admin_token = K1_ADMIN_TOKEN if K1_ADMIN_TOKEN else str(uuid.uuid4())
             log_audit("admin_login", {"user": username, "full_rights": True}, user_id=username, session_id="web")
             return jsonify({
@@ -1189,7 +1191,7 @@ def api_login():
                 "adminToken": admin_token,
                 "mode": "Admin",
                 "status": "active",
-                "version": "k1.1.0",
+                "version": "v3.0.0",
                 "tier": "Elite",
                 "full_rights": True
             }), 200
