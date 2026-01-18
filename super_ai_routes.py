@@ -270,6 +270,10 @@ def admin_save_integrity():
 @super_ai_bp.route('/chat', methods=['POST'])
 @rate_limit(max_requests=20, window_seconds=60)
 def chat():
+    """
+    Endpoint principal pentru chat-ul Super AI.
+    Include logica de TTS si emotii.
+    """
     data = request.get_json() or {}
     message = data.get("message", "").strip()
     include_context = data.get("include_context", True)
@@ -277,10 +281,44 @@ def chat():
     if not message:
         return jsonify({"error": "Mesajul este obligatoriu"}), 400
     
+    # Procesare AI
     result = call_claude(message, include_context=include_context)
     
     if result.get("blocked"):
         return jsonify(result), 403
+    
+    if "error" in result:
+        return jsonify(result), 500
+
+    # Integram TTS (Vocea Narrator/Kelion)
+    text_to_speak = result.get("text", "")
+    tts_data = {}
+    
+    try:
+        # Folosim VoiceAuthority pentru a genera audio sau browser TTS
+        voice_auth = get_voice_authority()
+        lang = voice_auth.detect_language(text_to_speak)
+        
+        # Romanian forcing server/onyx tts if possible
+        tts_data = synthesize_speech(text_to_speak)
+        
+        # Add animation tokens for frontend
+        result["animation"] = "speak"
+        if result.get("emotion") == "happy":
+            result["animation"] = "happy"
+        elif result.get("emotion") == "empathetic":
+            result["animation"] = "empathetic"
+            
+        # Map tts_data to frontend expected fields
+        result["audioUrl"] = tts_data.get("audio_url")
+        result["useBrowserTTS"] = tts_data.get("use_browser_tts", False)
+        
+        # Optional: Lipsync logic here if needed (could be added later)
+        result["lipsync"] = None
+        
+    except Exception as e:
+        api_logger.error(f"TTS Error in super_chat: {e}")
+        result["useBrowserTTS"] = True # Fallback to browser
     
     return jsonify(result)
 

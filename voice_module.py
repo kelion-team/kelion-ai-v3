@@ -90,11 +90,14 @@ class VoiceAuthority:
     
     def _browser_tts(self, text: str, voice: str) -> Dict:
         """Returnează instrucțiuni pentru Web Speech API (gratuit)."""
+        lang = self.detect_language(text)
+        browser_lang = "ro-RO" if lang == "ro" else "en-US"
+        
         return {
             "use_browser_tts": True,
             "text": text,
             "voice_settings": {
-                "lang": "ro-RO",
+                "lang": browser_lang,
                 "rate": 1.0,
                 "pitch": 0.9,
                 "voice_name": voice  # Male voices preferred
