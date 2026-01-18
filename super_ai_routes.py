@@ -313,8 +313,8 @@ def chat():
         result["audioUrl"] = tts_data.get("audio_url")
         result["useBrowserTTS"] = tts_data.get("use_browser_tts", False)
         
-        # Optional: Lipsync logic here if needed (could be added later)
-        result["lipsync"] = None
+        # Sincronizare buze (Lipsync)
+        result["lipsync"] = tts_data.get("lipsync")
         
     except Exception as e:
         api_logger.error(f"TTS Error in super_chat: {e}")

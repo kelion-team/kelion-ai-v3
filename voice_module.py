@@ -7,6 +7,7 @@ Punct 11: Live Translator
 """
 
 import os
+import re
 import json
 import hashlib
 import base64
@@ -102,6 +103,70 @@ class VoiceAuthority:
                 "pitch": 0.9,
                 "voice_name": voice  # Male voices preferred
             }
+    
+    def make_viseme_timeline(self, words: List[Dict]) -> List[Dict]:
+        """Convertește timpii cuvintelor -> timeline de viseme (euristică)."""
+        def viseme_for_word(w: str) -> str:
+            w = (w or "").lower()
+            if not w: return "REST"
+            if w.startswith("th"): return "TH"
+            if w.startswith(("ch", "sh", "j", "zh")): return "CH"
+            if w.startswith(("f", "v")): return "FV"
+            if w.startswith(("m", "b", "p")): return "MBP"
+            if w.startswith(("k", "g", "q", "c")): return "KG"
+            if w.startswith(("s", "z", "x")): return "S"
+            if w.startswith("r"): return "R"
+            if w.startswith("l"): return "L"
+            if w.startswith("w"): return "WQ"
+            m = re.search(r"[aeiouyăâîșț]+", w)
+            if not m: return "REST"
+            v = m.group(0)
+            if v in ("oo", "u", "ou", "ow", "ua", "uo"): return "OO"
+            if v in ("ee", "i", "ie", "ei", "y", "ea"): return "EE"
+            return "AA"
+
+        tl = []
+        for it in words or []:
+            try:
+                t0 = float(it.get("start", 0.0))
+                t1 = float(it.get("end", t0 + 0.12))
+                word = it.get("word") or ""
+                tl.append({"t0": t0, "t1": t1, "viseme": viseme_for_word(word)})
+            except Exception:
+                continue
+        return tl
+
+    def _get_lipsync_data(self, audio_bytes: bytes) -> Optional[Dict]:
+        """Obține date de lipsync folosind Whisper (word-level timestamps)."""
+        if not OPENAI_API_KEY:
+            return None
+        
+        try:
+            headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+            files = {"file": ("speech.mp3", audio_bytes)}
+            data = {
+                "model": "whisper-1",
+                "response_format": "verbose_json",
+                "timestamp_granularities[]": "word"
+            }
+            
+            r = requests.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers=headers,
+                files=files,
+                data=data,
+                timeout=60
+            )
+            r.raise_for_status()
+            res = r.json()
+            words = res.get("words", [])
+            
+            return {
+                "words": words,
+                "visemes": self.make_viseme_timeline(words)
+            }
+        except Exception:
+            return None
         }
     
     def _openai_tts(self, text: str, voice: str, cache_key: str) -> Dict:
@@ -135,7 +200,13 @@ class VoiceAuthority:
             with open(cache_path, 'wb') as f:
                 f.write(response.content)
             
-            return {"audio_url": f"/audio/tts_cache/{cache_key}.mp3"}
+            # Generare Lipsync (Opțional)
+            lipsync = self._get_lipsync_data(response.content)
+            
+            return {
+                "audio_url": f"/audio/tts_cache/{cache_key}.mp3",
+                "lipsync": lipsync
+            }
             
         except Exception as e:
             return {"error": str(e), "fallback": self._browser_tts(text, voice)}
