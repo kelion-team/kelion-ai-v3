@@ -807,7 +807,7 @@ def call_openai_stt_words(file_bytes: bytes, filename: str = "audio.mp3") -> dic
     r.raise_for_status()
     return r.json()
 
-def make_viseme_timeline(words: list[dict]) -> list[dict]:
+def make_viseme_timeline(words):
     """Convert word timestamps -> a simple viseme timeline (heuristic)."""
     def viseme_for_word(w: str) -> str:
         w = (w or "").lower()
