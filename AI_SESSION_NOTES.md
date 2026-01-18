@@ -8,7 +8,7 @@
 > 4. **ASK BEFORE CHANGES** - Notify user before ANY code modification
 
 ## Project Location
-- **GitHub Repository**: https://github.com/AE1968/kelion-ai-v3 (THE ONLY SOURCE)
+- **GitHub Repository**: https://github.com/kelion-team/kelion-ai-v3 (THE ONLY SOURCE)
 - **Deployment**: Railway → https://kelionai.app
 - **NO LOCAL FILES** - Work exclusively through Git commits
 
@@ -19,7 +19,7 @@
 - **Name**: KELION AI v3.0.0
 - **Type**: WebGL Hologram Neural Assistant
 - **Deployment**: Railway (fantastic-fulfillment) → kelionai.app
-- **Repository**: https://github.com/AE1968/kelion-ai-v3
+- **Repository**: https://github.com/kelion-team/kelion-ai-v3
 
 ## Current Status (Last Updated: 2026-01-18)
 - ✅ Rollback to commit ffd6db3 - "Exclude female voices in TTS fallback"
