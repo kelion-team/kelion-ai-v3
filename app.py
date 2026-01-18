@@ -129,7 +129,24 @@ DEPLOY_API_KEY = os.getenv('DEPLOY_API_KEY', '')  # Authorization: Bearer <key>
 
 # Database configuration - PostgreSQL or SQLite
 DATABASE_URL = os.getenv("DATABASE_URL", "")  # PostgreSQL connection string
-USE_POSTGRES = bool(DATABASE_URL and POSTGRES_AVAILABLE)
+
+# Validate DATABASE_URL has a valid hostname before enabling PostgreSQL
+def _validate_database_url(url):
+    if not url:
+        return False
+    try:
+        from urllib.parse import urlparse
+        result = urlparse(url)
+        # Must have a valid hostname (not None, not empty, not "host")
+        if not result.hostname or result.hostname == "host" or len(result.hostname) < 3:
+            logging.warning(f"Invalid DATABASE_URL hostname: {result.hostname}, falling back to SQLite")
+            return False
+        return True
+    except Exception as e:
+        logging.warning(f"DATABASE_URL parse error: {e}, falling back to SQLite")
+        return False
+
+USE_POSTGRES = bool(DATABASE_URL and POSTGRES_AVAILABLE and _validate_database_url(DATABASE_URL))
 
 # Stripe configuration
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
