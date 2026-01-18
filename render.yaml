@@ -1,12 +1,12 @@
 services:
   - type: web
-    name: kelion-ai
+    name: k-hologram
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    repo: https://github.com/kelion-team/kelion-ai-v3
+    buildCommand: pip install -r k_requirements.txt
+    startCommand: python k_backend.py
     envVars:
+      - key: OPENAI_API_KEY
+        sync: false
       - key: PORT
         value: 10000
-      - key: PYTHON_VERSION
-        value: 3.11.0
-    autoDeploy: true
