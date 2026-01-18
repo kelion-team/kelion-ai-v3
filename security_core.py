@@ -482,21 +482,33 @@ def verify_code_integrity() -> Dict:
             tampered.append(filename)
     
     if tampered:
-        # In Railway environment, auto-update hashes (legitimate CI/CD deploy)
+        # Smart Auto-Calibration for Production (Railway)
         if is_railway:
-            audit_logger.info(f"Railway deploy detected - updating integrity hashes for: {tampered}")
-            save_code_integrity()
-            return {"valid": True, "updated": True, "files": tampered}
-        
-        audit_logger.critical(f"CODE TAMPERING DETECTED: {tampered} - Allowing startup for stability")
-        # Relaxed security: Do NOT lockdown, just warn
+            audit_logger.info(f"🚀 Railway Deploy/Update detected. Auto-calibrating integrity hashes for: {tampered}")
+            try:
+                # Save new state as current reference
+                save_code_integrity()
+                return {
+                    "valid": True, 
+                    "updated": True, 
+                    "files": tampered,
+                    "message": "System integrity auto-calibrated for new deployment"
+                }
+            except Exception as e:
+                audit_logger.error(f"Failed to auto-calibrate hashes: {e}")
+
+        # Fallback for other environments or failed calibration
+        audit_logger.critical(f"⚠️ CODE TAMPERING DETECTED: {tampered}")
+        # We allow startup even if tampered to ensure the site stays functional, 
+        # but we mark it as 'tampered' in the response.
         return {
-            "valid": True,
-            "tampered_files": tampered,
-            "warning": "Integrity mismatch detected (likely deployment update)"
+            "valid": True, 
+            "tampered_files": tampered, 
+            "status": "WARNING",
+            "message": "Integrity mismatch detected. System running in degraded security mode."
         }
     
-    return {"valid": True}
+    return {"valid": True, "status": "SECURE"}
 
 
 def k_armor_check() -> Dict:

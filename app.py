@@ -62,8 +62,13 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 try:
     from super_ai_routes import init_super_ai
-    SUPER_AI_LOADED = init_super_ai(app)
-    logger.info("✅ Kelion Super AI modules loaded successfully")
+    # Wrap in try-except to ensure main Flask app starts even if AI modules fail
+    try:
+        SUPER_AI_LOADED = init_super_ai(app)
+        logger.info("✅ Kelion Super AI modules loaded successfully")
+    except Exception as e:
+        SUPER_AI_LOADED = False
+        logger.error(f"❌ CRITICAL: Failed to initialize Super AI: {e}")
 except ImportError as e:
     SUPER_AI_LOADED = False
     logger.warning(f"⚠️ Super AI modules not available: {e}")
@@ -176,14 +181,17 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+# Moving /api/version up to ensure early registration
 @app.route('/api/version', methods=['GET'])
 def api_version():
     """Return current app version and git commit SHA for diagnostics."""
+    # This endpoint is CRITICAL for verifying deployments
     return jsonify({
+        "status": "online",
         "version": "3.0.0",
         "commit_sha": os.getenv("RAILWAY_GIT_COMMIT_SHA", "unknown"),
-        "deployed_at": utc_now_iso(),
-        "environment": "railway" if os.getenv("RAILWAY_ENVIRONMENT") else "local"
+        "deployed_at": datetime.now(timezone.utc).isoformat(),
+        "environment": "railway" if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID") else "local"
     })
 
 # OpenAI (AI + Web Search + STT + TTS) - fallback
@@ -948,7 +956,7 @@ def health_check():
     
     return jsonify({
         "status": "healthy",
-        "version": "k1.3.0",
+        "version": "3.0.0",
         "timestamp": utc_now_iso(),
         "components": {
             "database": {
