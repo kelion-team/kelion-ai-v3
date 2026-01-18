@@ -398,6 +398,13 @@ def register_authorized_host() -> Dict:
 
 def is_authorized_host() -> bool:
     """Verifică dacă mașina curentă este autorizată."""
+    # Check if running in Railway (legitimate deploy environment - always authorized)
+    is_railway = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID")
+    if is_railway:
+        # Railway is always authorized - register and return True
+        register_authorized_host()
+        return True
+    
     if not os.path.exists(AUTHORIZED_HOSTS_FILE):
         # Prima rulare - auto-autorizează
         register_authorized_host()
@@ -453,6 +460,9 @@ def save_code_integrity() -> Dict[str, str]:
 
 def verify_code_integrity() -> Dict:
     """Verifică dacă codul a fost modificat extern."""
+    # Check if running in Railway (legitimate deploy environment)
+    is_railway = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID")
+    
     if not os.path.exists(CODE_HASHES_FILE):
         save_code_integrity()
         return {"valid": True, "first_run": True}
@@ -472,6 +482,12 @@ def verify_code_integrity() -> Dict:
             tampered.append(filename)
     
     if tampered:
+        # In Railway environment, auto-update hashes (legitimate CI/CD deploy)
+        if is_railway:
+            audit_logger.info(f"Railway deploy detected - updating integrity hashes for: {tampered}")
+            save_code_integrity()
+            return {"valid": True, "updated": True, "files": tampered}
+        
         audit_logger.critical(f"CODE TAMPERING DETECTED: {tampered}")
         return {
             "valid": False,

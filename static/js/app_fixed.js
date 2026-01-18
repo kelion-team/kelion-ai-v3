@@ -1179,34 +1179,22 @@ function initIntroPage() {
   }, 500);
 
   // Transition function - now goes to LOGIN, not hologram
-  const enterApp = async () => {
+  const enterApp = () => {
     if (introLayer.classList.contains('exiting')) return;
 
     // Unlock audio context on user gesture (required for autoplay)
     unlockAudioContext();
 
     // Start narrator voice NOW (user just clicked, so autoplay is allowed)
-    // Don't await here - let user skip if they want
-    const narrationPromise = playIntroNarration();
+    playIntroNarration();
 
-    // Add exit animation to intro after narration completes or user skips
-    // Wait for narration to finish (narratorActive becomes false)
-    const waitForNarration = async () => {
-      // Wait up to 60 seconds for narration (5 lines * ~10sec each max)
-      for (let i = 0; i < 120; i++) {
-        if (!narratorActive) break;
-        await new Promise(r => setTimeout(r, 500));
-      }
-    };
-
-    await waitForNarration();
-
-    // Now transition to login
+    // Transition immediately - narrator continues during transition
     introLayer.classList.add('exiting');
 
     // Wait for exit animation, then show login
     setTimeout(() => {
       introLayer.style.display = 'none';
+      stopNarrator();
 
       // Check if already logged in
       if (isUserLoggedIn()) {
@@ -1214,7 +1202,7 @@ function initIntroPage() {
       } else {
         showLoginPage();
       }
-    }, 800);
+    }, 1500);
   };
   // Button click
   if (enterBtn) {
