@@ -983,6 +983,11 @@ def health_check():
             }
         }
     }), 200
+    
+@app.get("/api/version")
+def api_version_endpoint():
+    """Simple version reporting endpoint."""
+    return jsonify({"version": "3.0.0", "name": "KELION AI"}), 200
 
 
 @app.post("/api/stt")
