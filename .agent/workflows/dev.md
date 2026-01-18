@@ -4,6 +4,19 @@ description: Development workflow for KELION_FRONTEND - runs all commands automa
 
 // turbo-all
 
+## ⚠️ OBLIGATORIU - CITEȘTE ÎNTÂI
+
+0. **CITEȘTE AI_SESSION_NOTES.md** înainte de ORICE altceva!
+```bash
+type AI_SESSION_NOTES.md
+```
+> Conține regulile critice ale proiectului:
+> - USE ONLY GIT - fără modificări locale
+> - GitHub → Railway (auto-deploy)
+> - NOTIFY BEFORE ANY CODE CHANGES
+
+---
+
 ## Development Commands
 
 1. Install dependencies
