@@ -176,6 +176,15 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+@app.route('/api/version', methods=['GET'])
+def api_version():
+    """Return current app version and git commit SHA for diagnostics."""
+    return jsonify({
+        "version": "3.0.0",
+        "commit_sha": os.getenv("RAILWAY_GIT_COMMIT_SHA", "unknown"),
+        "deployed_at": utc_now_iso(),
+        "environment": "railway" if os.getenv("RAILWAY_ENVIRONMENT") else "local"
+    })
 
 # OpenAI (AI + Web Search + STT + TTS) - fallback
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
